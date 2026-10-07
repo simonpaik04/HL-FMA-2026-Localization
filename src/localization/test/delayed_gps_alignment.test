@@ -1,0 +1,12 @@
+<launch>
+  <param name="use_sim_time" value="true"/>
+  <node pkg="mando_localization" type="odometry_gps_fusion_node"
+        name="delayed_gps_alignment_gate" output="screen" required="true">
+    <rosparam command="load" file="$(find mando_localization)/config/localization_interfaces.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/gps_reference.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/status_policy.yaml"/>
+    <param name="timing/require_clock_ready" value="false"/>
+  </node>
+  <test test-name="delayed_gps_alignment" pkg="mando_localization"
+        type="test_delayed_gps_alignment.py" time-limit="25.0"/>
+</launch>

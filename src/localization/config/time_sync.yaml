@@ -1,0 +1,45 @@
+# NTP는 PC UTC 정렬만 검사한다. IMU/encoder 측정 epoch, PPS 또는 USB 지연을 보장하지 않는다.
+clock_preflight:
+  backend: auto
+  command_timeout_sec: 2.0
+  max_abs_offset_sec: 0.05
+  max_root_distance_sec: 0.05
+  # timesyncd의 현재 최대 poll 2048초를 수용하는 잠정 운영 기준이다.
+  max_sample_age_sec: 3600.0
+  max_poll_interval_sec: 2048.0
+  max_poll_age_factor: 2.0
+  min_sample_age_limit_sec: 120.0
+  future_sample_tolerance_sec: 1.0
+
+gps_driver_timing_topic: /mando_localization/internal/driver/gps_timing
+sensor_timing_monitor:
+  publish_rate_hz: 1.0
+  host_check_period_sec: 5.0
+  host_check_stale_sec: 15.0
+  driver_diagnostics_stale_sec: 1.0
+  window_sec: 30.0
+  max_samples: 6000
+  clock_jump_tolerance_sec: 0.1
+  min_samples: 5
+  # 센서 시각 진단과 GNSS UTC 진단의 미래 stamp 허용값.
+  future_tolerance_sec: 0.50
+  # signed receipt-header에는 PC clock offset도 포함된다. 실제 전송 지연 단독 측정값이 아니다.
+  max_header_age_p95_sec: 0.2
+  # GPS gate가 허용하는 최대 측정 age 1.0초와 맞춘다. 0.2초 초과는 위 성능 WARN으로 남긴다.
+  max_gnss_receipt_difference_sec: 1.0
+  sensors:
+    gps:
+      expected_interval_sec: 0.1
+      max_gap_sec: 0.3
+      stale_sec: 0.5
+      stamp_semantics: gnss_utc_requires_driver_confirmation
+    imu:
+      expected_interval_sec: 0.01
+      max_gap_sec: 0.05
+      stale_sec: 0.2
+      stamp_semantics: pc_driver_receipt_not_measurement_epoch
+    encoder:
+      expected_interval_sec: 0.13
+      max_gap_sec: 0.4
+      stale_sec: 0.6
+      stamp_semantics: pc_adapter_receipt_not_measurement_epoch

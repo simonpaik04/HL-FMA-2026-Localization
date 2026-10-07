@@ -1,0 +1,14 @@
+<launch>
+  <param name="use_sim_time" value="true"/>
+  <node pkg="mando_localization" type="odometry_gps_fusion_node"
+        name="gps_clock_ready_gate" output="screen" required="true">
+    <rosparam command="load" file="$(find mando_localization)/config/localization_interfaces.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/gps_reference.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/status_policy.yaml"/>
+    <param name="internal_topics/clock_ready" value="/mando_localization/internal/timing/clock_ready"/>
+    <param name="timing/require_clock_ready" value="true"/>
+    <param name="timing/clock_ready_timeout_sec" value="0.3"/>
+  </node>
+  <test test-name="gps_clock_ready" pkg="mando_localization"
+        type="test_gps_clock_ready.py" time-limit="20.0"/>
+</launch>

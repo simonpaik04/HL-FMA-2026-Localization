@@ -1,0 +1,101 @@
+# mando_localization에서 사용하는 공개 ROS 인터페이스의 단일 목록이다.
+# 실제 node name은 ROS1 제약 때문에 launch argument로 최종 지정한다.
+schema_version: 1
+
+nodes:
+  encoder_driver: mando_encoder_serial
+  imu_driver: xsens_mti_node
+  gps_driver: ublox_gps_node
+  interface_adapter: localization_interface_adapter
+  imu_normalizer: imu_normalizer
+  calibrated_imu: calibrated_imu
+  encoder_adapter: encoder_to_twist_adapter
+  local_ekf: imu_encoder_local_ekf
+  gps_quality_gate: odometry_gps_fusion
+  global_ekf: odometry_gps_global_ekf
+  supervisor: localization_supervisor
+  output_gate: localization_output_gate
+  static_tf_publisher: localization_static_tf_publisher
+  visualization: localization_visualization
+  rviz: mando_localization_rviz
+  sensor_timing_monitor: sensor_timing_monitor
+  rddf_tracker: rddf_tracker
+
+topics:
+  # 원본, 형식 검증, 방향 보정 출력을 분리한다. 융합은 calibrated만 사용한다.
+  encoder_state: /erp42_serial/feedback
+  encoder_twist: /molit/vehicle/twist
+  imu_data: /molit/sensors/imu/data
+  imu_normalized: /molit/localization/imu/normalized
+  imu_calibrated: /molit/localization/imu/calibrated
+  gps_fix: /molit/sensors/gps/fix
+  gps_navpvt: /molit/sensors/gps/navpvt
+  lidar_scan: /molit/sensors/lidar/scan
+
+  # 융합 단계별 출력과 품질 게이트 인터페이스다.
+  local_odometry: /molit/localization/local/odometry
+  gps_map_pose: /molit/localization/gps/map_pose
+  global_odometry: /molit/localization/global/odometry
+  current_rddf: /molit/localization/rddf/current
+  output_odometry: /molit/localization/odometry
+  path: /molit/localization/path
+  markers: /molit/localization/markers
+
+  # 상태 Manager와 안전 출력 게이트가 공유하는 토픽이다.
+  status: /molit/localization/status
+  state: /molit/localization/state
+  valid: /molit/localization/valid
+  gps_relocalizing: /mando_localization/internal/gps/relocalizing
+  diagnostics: /diagnostics
+  recovery_state: /molit/localization/recovery/state
+
+# 동일 프로세스의 안전 구성요소 사이에서만 사용하는 토픽이다. 공개 계약과
+# 분리해 StatusManager의 평가, GPS gate 후보와 Supervisor의 최종 결정을 구분한다.
+internal_topics:
+  imu_calibration_status: /mando_localization/internal/imu/calibration_status
+  clock_ready: /mando_localization/internal/timing/clock_ready
+  timing_diagnostics: /mando_localization/internal/timing/diagnostics
+  evaluated_status: /mando_localization/internal/status/evaluated
+  evaluated_state: /mando_localization/internal/status/state
+  evaluated_valid: /mando_localization/internal/status/valid
+  gps_candidate_pose: /mando_localization/internal/gps/candidate_pose
+  gps_gate_pose: /mando_localization/internal/gps/gate_pose
+  gps_gate_relocalizing: /mando_localization/internal/gps/gate_relocalizing
+  gps_reanchor_pose: /mando_localization/internal/gps/reanchor_pose
+  gps_reanchor_accepted: /mando_localization/internal/gps/reanchor_accepted
+  recovery_active: /mando_localization/internal/recovery/active
+
+services:
+  local_ekf_set_pose: /mando_localization/internal/ekf/local_set_pose
+  global_ekf_set_pose: /mando_localization/internal/ekf/global_set_pose
+
+frames:
+  map: map
+  odom: odom
+  base_link: base_link
+  imu: imu_link
+  gps: gps_link
+  lidar: laser_link
+
+message_types:
+  encoder_state: erp42_msgs/SerialFeedBack
+  encoder_twist: geometry_msgs/TwistWithCovarianceStamped
+  imu_data: sensor_msgs/Imu
+  imu_normalized: sensor_msgs/Imu
+  imu_calibrated: sensor_msgs/Imu
+  imu_calibration_status: diagnostic_msgs/DiagnosticArray
+  gps_fix: sensor_msgs/NavSatFix
+  lidar_scan: sensor_msgs/LaserScan
+  odometry: nav_msgs/Odometry
+  absolute_pose: geometry_msgs/PoseWithCovarianceStamped
+  gps_gate_reanchor: mando_localization/GpsGateReanchor
+  current_rddf: mando_localization/RddfMatch
+  status: diagnostic_msgs/DiagnosticArray
+
+contracts:
+  coordinate_convention: ENU
+  planar_motion: true
+  speed_unit: m/s
+  angular_velocity_unit: rad/s
+  angle_unit: rad
+  configuration_reload: node_restart_required

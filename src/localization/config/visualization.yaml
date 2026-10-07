@@ -1,0 +1,27 @@
+publish_rate_hz: 10.0
+fixed_frame: map
+
+path:
+  max_pose_count: 2000
+  clear_on_invalid: true
+  min_translation_m: 0.05
+  min_rotation_rad: 0.02
+  line_width_m: 0.05
+  color_rgba: [0.10, 0.80, 1.00, 1.00]
+
+markers:
+  vehicle_scale_m: [1.6, 0.8, 0.4]
+  gps_scale_m: 0.35
+  gps_color_rgba: [0.10, 0.90, 0.20, 0.90]
+  fault_color_rgba: [1.00, 0.10, 0.10, 1.00]
+
+panel:
+  refresh_rate_hz: 5.0
+  stale_display_sec: 1.0
+  korean_labels:
+    INITIALIZING: "초기화 중"
+    TRACKING: "정상 추적"
+    DEGRADED: "일부 센서 저하"
+    DEAD_RECKONING: "추측 항법 중"
+    RELOCALIZING: "위치 재정합 중"
+    FAULT: "위치 사용 불가"

@@ -1,0 +1,2 @@
+uint64 transaction_id
+geometry_msgs/PoseWithCovarianceStamped pose

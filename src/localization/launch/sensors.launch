@@ -1,0 +1,44 @@
+<launch>
+  <!-- USB 드라이버는 선택 실행한다. 외부 드라이버를 쓸 때 해당 인자를 false로 둔다. -->
+  <arg name="start_encoder_driver" default="true"/>
+  <arg name="start_imu_driver" default="false"/>
+  <arg name="start_gps_driver" default="false"/>
+  <arg name="encoder_driver_node_name" default="mando_encoder_serial"/>
+  <arg name="imu_driver_node_name" default="xsens_mti_node"/>
+  <arg name="gps_driver_node_name" default="ublox_gps_node"/>
+  <arg name="encoder_driver_config" default="$(find mando_localization)/config/encoder_driver.yaml"/>
+  <arg name="imu_driver_config" default="$(find mando_localization)/config/imu_driver.yaml"/>
+  <arg name="gps_driver_config" default="$(find mando_localization)/config/gps_driver.yaml"/>
+  <arg name="time_sync_config" default="$(find mando_localization)/config/time_sync.yaml"/>
+  <!-- 드라이버 출력은 어댑터가 차량별 공개 토픽으로 전달한다. -->
+  <arg name="imu_raw_topic" default="/mando_localization/internal/driver/imu"/>
+  <arg name="gps_fix_topic" default="/mando_localization/internal/driver/gps_fix"/>
+
+  <!-- Arduino firmware가 선언한 /erp42_serial/feedback을 그대로 노출한다. -->
+  <group if="$(arg start_encoder_driver)">
+    <node pkg="rosserial_python" type="serial_node.py"
+          name="$(arg encoder_driver_node_name)" output="screen" clear_params="true">
+      <rosparam command="load" file="$(arg encoder_driver_config)"/>
+    </node>
+  </group>
+
+  <group if="$(arg start_imu_driver)">
+    <node pkg="xsens_mti_driver" type="xsens_mti_node"
+          name="$(arg imu_driver_node_name)" output="screen" clear_params="true">
+      <rosparam command="load" file="$(arg imu_driver_config)"/>
+      <remap from="imu/data" to="$(arg imu_raw_topic)"/>
+    </node>
+  </group>
+
+  <group if="$(arg start_gps_driver)">
+    <node pkg="ublox_gps" type="ublox_gps"
+          name="$(arg gps_driver_node_name)" output="screen" clear_params="true"
+          launch-prefix="rosrun mando_localization check_time_sync.py --config &quot;$(arg time_sync_config)&quot; --gps-config &quot;$(arg gps_driver_config)&quot; --exec">
+      <rosparam command="load" file="$(arg gps_driver_config)"/>
+      <!-- ublox_gps는 두 토픽을 private(~) 이름으로 발행한다. -->
+      <remap from="~fix" to="$(arg gps_fix_topic)"/>
+      <remap from="~navpvt" to="/mando_localization/internal/driver/gps_navpvt"/>
+      <remap from="~timing" to="/mando_localization/internal/driver/gps_timing"/>
+    </node>
+  </group>
+</launch>

@@ -1,0 +1,44 @@
+# 실시간·기록 결과 공통 설정. 상대 RDDF 경로는 패키지 디렉터리 기준.
+# 화면의 XY 기준만 이동하며 입력 yaw를 회전하지 않는다.
+rddf_directory: rddf
+refresh_ms: 100
+max_samples_per_topic: 200000
+# Raw IMU가 이 시간보다 오래 끊기면 센서 행을 오류로 표시한다.
+imu_raw_stale_sec: 0.5
+topics:
+  local: /molit/localization/local/odometry
+  global: /molit/localization/global/odometry
+  gps: /molit/sensors/gps/fix
+  scan: /mando_localization/visualization/lidar/front_scan
+  speed: /erp42_serial/feedback
+  state: /molit/localization/state
+  valid: /molit/localization/valid
+  imu_raw: /molit/sensors/imu/data
+  imu_normalized: /molit/localization/imu/normalized
+  imu_calibrated: /molit/localization/imu/calibrated
+  calibration: /mando_localization/internal/imu/calibration_status
+  diagnostics: /molit/localization/status
+colors:
+  local:
+  - 0.1
+  - 1.0
+  - 0.2
+  global:
+  - 1.0
+  - 0.15
+  - 0.15
+  gps:
+  - 0.7
+  - 0.2
+  - 1.0
+  rddf:
+  - 0.25
+  - 0.5
+  - 1.0
+
+# 시작 위치 선택 모드에서 허용할 RDDF 스냅 거리 [m].
+manual_snap_distance_m: 5.0
+
+# Global 위치 기준 현재 RDDF 표시. 경로까지 거리와 후보 간 거리 차이 [m].
+current_rddf_max_distance_m: 5.0
+current_rddf_ambiguity_distance_m: 0.5

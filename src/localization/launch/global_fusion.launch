@@ -1,0 +1,17 @@
+<launch>
+  <arg name="start_global_ekf" default="true"/>
+  <arg name="global_ekf_config" default="$(find mando_localization)/config/ekf_global.yaml"/>
+  <arg name="global_ekf_node_name" default="odometry_gps_global_ekf"/>
+  <arg name="initialize_heading" default="true"/>
+  <arg name="initial_heading_config" default="$(find mando_localization)/config/initial_heading.yaml"/>
+
+  <group if="$(arg start_global_ekf)">
+    <node pkg="robot_localization" type="ekf_localization_node"
+          name="$(arg global_ekf_node_name)" output="screen" clear_params="true">
+      <rosparam command="load" file="$(arg global_ekf_config)"/>
+      <rosparam if="$(arg initialize_heading)" command="load" file="$(arg initial_heading_config)"/>
+      <remap from="odometry/filtered" to="/mando_localization/internal/ekf/global_odometry"/>
+      <remap from="set_pose" to="/mando_localization/internal/ekf/global_set_pose"/>
+    </node>
+  </group>
+</launch>

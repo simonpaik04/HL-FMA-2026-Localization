@@ -1,0 +1,86 @@
+# Global EKF: 움직임 입력과 승인된 GPS 절대 위치를 융합하고 map -> odom을 소유한다.
+frequency: 30.0
+sensor_timeout: 0.20
+two_d_mode: true
+transform_time_offset: 0.0
+# 과거 측정 재처리가 30 Hz 출력을 TF 대기로 막지 않게 한다.
+transform_timeout: 0.0
+print_diagnostics: true
+debug: false
+publish_tf: true
+publish_acceleration: false
+reset_on_time_jump: true
+# GPS 측정 시각까지 돌아가 보정한 뒤 움직임 입력을 재처리한다.
+# GPS age 한계(1 s)와 앞단 대기(0.6 s)보다 긴 이력을 유지한다.
+smooth_lagged_data: true
+history_length: 2.0
+predict_to_current_time: true
+# 이미 발행한 과거 timestamp의 TF/출력을 다시 내보내지 않는다.
+permit_corrected_publication: false
+
+map_frame: map
+odom_frame: odom
+base_link_frame: base_link
+world_frame: map
+
+# Local Odometry는 상관된 정보를 중복 융합하지 않는다. 동일한 원시 움직임만 다시 사용한다.
+# vx와 함께 rear_axle_center의 비홀로노믹 vy=0 모델 제약을 사용한다.
+twist0: /mando_localization/internal/ekf/twist
+twist0_config: [false, false, false,
+                false, false, false,
+                true,  true,  false,
+                false, false, false,
+                false, false, false]
+twist0_queue_size: 10
+twist0_nodelay: true
+twist0_differential: false
+twist0_relative: false
+twist0_rejection_threshold: 5.0
+
+imu0: /mando_localization/internal/ekf/imu
+imu0_config: [false, false, false,
+              false, false, true,
+              false, false, false,
+              false, false, true,
+              false, false, false]
+imu0_queue_size: 20
+imu0_nodelay: true
+imu0_differential: false
+imu0_relative: false
+imu0_remove_gravitational_acceleration: true
+imu0_pose_rejection_threshold: 5.0
+imu0_twist_rejection_threshold: 5.0
+
+pose0: /mando_localization/internal/ekf/gps_pose
+pose0_config: [true,  true,  false,
+               false, false, false,
+               false, false, false,
+               false, false, false,
+               false, false, false]
+pose0_queue_size: 10
+pose0_nodelay: true
+pose0_differential: false
+pose0_relative: false
+pose0_rejection_threshold: 5.0
+
+
+use_control: false
+dynamic_process_noise_covariance: false
+
+# 상태 순서: x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az
+process_noise_covariance: [
+  0.20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0.20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0.001, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0.05, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0.08, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0.001, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0.001, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.001, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.10, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.25, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.08, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.001]

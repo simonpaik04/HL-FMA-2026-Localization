@@ -1,0 +1,2 @@
+# Preserve RDDF exporter CRLF and accept its line ending in whitespace checks.
+*.csv whitespace=cr-at-eol

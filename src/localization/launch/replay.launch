@@ -1,0 +1,24 @@
+<launch>
+  <arg name="start_rddf_initialization" default="true"/>
+  <arg name="rddf_initialization_config" default="$(find mando_localization)/config/rddf_initialization.yaml"/>
+  <!-- 원본 센서만 재생하여 현재 코드로 다시 계산한다. 기존 EKF/TF는 재생하지 않는다. -->
+  <arg name="bag"/>
+  <arg name="rate" default="1.0"/>
+  <arg name="start" default="0.0"/>
+  <arg name="start_rviz" default="true"/>
+  <arg name="initialize_heading" default="true"/>
+  <arg name="initial_heading_config" default="$(find mando_localization)/config/initial_heading.yaml"/>
+  <param name="/use_sim_time" value="true"/>
+  <include file="$(find mando_localization)/launch/bringup.launch">
+    <arg name="start_rddf_initialization" value="$(arg start_rddf_initialization)"/>
+    <arg name="rddf_initialization_config" value="$(arg rddf_initialization_config)"/>
+    <arg name="initialize_heading" value="$(arg initialize_heading)"/>
+    <arg name="initial_heading_config" value="$(arg initial_heading_config)"/>
+    <arg name="start_encoder_driver" value="false"/>
+    <arg name="start_imu_driver" value="false"/>
+    <arg name="start_gps_driver" value="false"/>
+    <arg name="start_rviz" value="$(arg start_rviz)"/>
+  </include>
+  <node pkg="rosbag" type="play" name="localization_replay" output="screen"
+        args="--clock --hz 100 --delay 3 --rate $(arg rate) --start $(arg start) &quot;$(arg bag)&quot; --topics /mando_localization/internal/driver/imu /mando_localization/internal/driver/gps_fix /mando_localization/internal/driver/gps_navpvt /erp42_serial/feedback /molit/sensors/lidar/scan"/>
+</launch>

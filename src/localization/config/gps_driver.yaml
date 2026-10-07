@@ -1,0 +1,41 @@
+# KumarRobotics/ublox ROS1 드라이버용 GNSS 수신기 USB CDC(C타입) 설정이다.
+# udev 규칙 설치 권한이 없어도 포트 번호 변화에 안전하도록 수신기 고유 ID를 쓴다.
+device: /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00
+frame_id: gps_link
+# 동기화된 PC UTC와 GNSS 측정 UTC를 사용한다. 시작 전 clock 검사와
+# 운행 중 clock_ready 검사가 필요하며, 수신 시각은 ~timing에 별도 보존한다.
+# 명시적인 수신 시각 시험만 true로 바꾼다(전송 지연 보정으로 해석하지 않는다).
+use_ros_time: false
+require_valid_utc: true
+uart1:
+  baudrate: 460800
+  in: 1       # UBX
+  out: 1      # UBX
+
+# USB CDC 장치에서 NAV-PVT를 수신한다. uart1 항목은 드라이버의
+# 직렬 설정이며 USB 링크 속도를 의미하지 않는다. Flash에는 저장하지 않는다.
+config_on_startup: true
+save_on_shutdown: false
+clear_bbr: false
+rate: 10.0
+nav_rate: 1
+dynamic_model: automotive
+fix_mode: auto
+# 차량 이동 수신기: 고정 기준국/Survey-in 모드를 사용하지 않는다.
+tmode3: 0
+enable_ppp: false
+debug: 0
+
+publish:
+  all: false
+  nav:
+    pvt: true
+    posecef: false
+    posllh: false
+    relposned: false
+
+hardware:
+  usb_serial: ""
+  receiver: ZED-F9P
+  interface: USB_CDC
+  rtk_correction_source: none

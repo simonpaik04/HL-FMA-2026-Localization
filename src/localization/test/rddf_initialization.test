@@ -1,0 +1,19 @@
+<launch>
+  <arg name="mode" default="gps"/>
+  <param name="/use_sim_time" value="true"/>
+  <include file="$(find mando_localization)/launch/bringup.launch">
+    <arg name="start_rddf_initialization" value="true"/>
+    <arg name="start_encoder_driver" value="false"/>
+    <arg name="start_imu_driver" value="false"/>
+    <arg name="start_gps_driver" value="false"/>
+    <!-- Clock approval is injected: this checks initialization, not physical PPS. -->
+    <arg name="enable_gps_fusion" value="true"/>
+    <arg name="start_sensor_timing_monitor" value="false"/>
+    <arg name="start_visualization" value="false"/>
+    <arg name="start_rviz" value="false"/>
+  </include>
+  <test test-name="$(eval 'rddf_initialization_' + arg('mode'))"
+        pkg="mando_localization" type="test_rddf_initialization_ros.py" time-limit="55">
+    <param name="mode" value="$(arg mode)"/>
+  </test>
+</launch>

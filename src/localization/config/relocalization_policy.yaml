@@ -1,0 +1,21 @@
+# 장기 GPS 단절 뒤의 전역 재정합 정책이다. 정상 추적 중 GPS gate의 단기
+# Local-Odometry innovation 검사는 그대로 유지하고, 단절이 길 때만 적용한다.
+relocalization:
+  long_outage_sec: 2.0
+  candidate_max_message_age_sec: 1.0
+  candidate_max_future_stamp_sec: 0.50
+  candidate_cluster_radius_m: 2.0
+  reanchor_ack_timeout_sec: 1.0
+
+
+  gps_only:
+    # 실측 datum, 실제 GPS covariance, 정지 조건과 route/controller 복구가
+    # 검증되기 전에는 자동 EKF reset을 fail-closed로 막는다.
+    automatic_reset_enabled: false
+    require_measured_datum: true
+    required_consecutive_candidates: 5
+    max_stationary_speed_mps: 0.30
+    set_pose_service_wait_timeout_sec: 0.30
+    global_confirmation_timeout_sec: 1.0
+    max_global_confirmation_distance_m: 2.0
+    required_global_confirmations: 3

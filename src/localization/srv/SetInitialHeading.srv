@@ -1,0 +1,8 @@
+uint64 transaction_id
+float64 yaw_rad
+string source
+float64 standard_deviation_deg
+---
+bool accepted
+string reason
+time stamp

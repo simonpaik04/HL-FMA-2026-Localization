@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find mando_localization)/test/rddf_initialization.test">
+    <arg name="mode" value="manual"/>
+  </include>
+</launch>

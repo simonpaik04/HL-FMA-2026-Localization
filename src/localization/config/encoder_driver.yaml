@@ -1,0 +1,11 @@
+# 2026-09-06 교체한 엔코더 Arduino Uno에서 rosserial 피드백 수신 확인.
+# 제어 Arduino(사용자 지정 ACM1)와 구분하며, 재연결 시 번호가 바뀌어도 고유 ID로 선택한다.
+port: /dev/serial/by-id/usb-Arduino__www.arduino.cc__Arduino_Uno_11254501101131313365-if00
+baud: 57600
+
+hardware:
+  model: Arduino Uno R3
+  usb_vid_pid: "2341:0043"
+  usb_serial: "11254501101131313365"
+  transport: rosserial
+  calibration_state: connected_unverified

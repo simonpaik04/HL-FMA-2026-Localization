@@ -1,0 +1,7 @@
+# 센서 장착 TF의 회전을 사용해 차량 전방을 0도로 정의한다.
+# 센서 원점 기준 전방 반원만 표시한다. raw scan 및 물리 TF는 유지한다.
+output_topic: /mando_localization/visualization/lidar/front_scan
+sector:
+  min_angle_deg: -90.0
+  max_angle_deg: 90.0
+tf_timeout_sec: 0.05

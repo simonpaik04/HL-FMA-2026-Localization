@@ -1,0 +1,30 @@
+<launch>
+  <!-- Run on a separate master. The existing live IMU driver is read only. -->
+  <arg name="source_master_uri" default="http://localhost:11351"/>
+  <arg name="speed_mps" default="1.0"/>
+  <arg name="start_rviz" default="true"/>
+  <!-- Reject same-port use before loading production params or starting nodes. -->
+  <group if="$(eval arg('source_master_uri').rstrip('/').split(':')[-1] != env('ROS_MASTER_URI').rstrip('/').split(':')[-1])">
+  <param name="/use_sim_time" type="bool" value="false"/>
+  <include file="$(find mando_localization)/launch/bringup.launch">
+    <arg name="start_encoder_driver" value="false"/>
+    <arg name="start_imu_driver" value="false"/>
+    <arg name="start_gps_driver" value="false"/>
+    <arg name="enable_gps_fusion" value="false"/>
+    <arg name="start_rddf_initialization" value="false"/>
+    <arg name="start_rddf_tracking" value="false"/>
+    <arg name="initialize_heading" value="true"/>
+    <arg name="initial_heading_config" value="$(find mando_localization)/config/keyboard_imu_test_initial_pose.yaml"/>
+    <arg name="start_rviz" value="$(arg start_rviz)"/>
+    <arg name="rviz_config" value="$(find mando_localization)/config/keyboard_imu_test_viewer.yaml"/>
+  </include>
+  <node pkg="mando_localization" type="live_imu_test_relay.py" name="live_imu_test_relay"
+        output="screen" required="true">
+    <param name="source_master_uri" value="$(arg source_master_uri)"/>
+  </node>
+  <node pkg="mando_localization" type="keyboard_encoder_test.py" name="keyboard_encoder_test"
+        output="screen" required="true">
+    <param name="speed_mps" value="$(arg speed_mps)"/>
+  </node>
+  </group>
+</launch>

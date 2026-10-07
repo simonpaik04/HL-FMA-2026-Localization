@@ -1,0 +1,20 @@
+<launch>
+  <node pkg="mando_localization" type="localization_supervisor_node"
+        name="startup_test_supervisor" output="screen">
+    <rosparam command="load" file="$(find mando_localization)/config/localization_interfaces.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/status_policy.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/relocalization_policy.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/gps_reference.yaml"/>
+    <param name="initialization/required" value="true"/>
+  </node>
+  <node pkg="mando_localization" type="localization_output_gate_node"
+        name="startup_test_output_gate" output="screen">
+    <rosparam command="load" file="$(find mando_localization)/config/localization_interfaces.yaml"/>
+    <rosparam command="load" file="$(find mando_localization)/config/status_policy.yaml"/>
+    <param name="initialization/required" value="true"/>
+    <param name="topics/valid" value="/test/startup/forced_valid"/>
+    <param name="topics/output_odometry" value="/test/startup/output"/>
+  </node>
+  <test test-name="startup_gate" pkg="mando_localization" type="test_startup_gate.py"
+        time-limit="35.0"/>
+</launch>

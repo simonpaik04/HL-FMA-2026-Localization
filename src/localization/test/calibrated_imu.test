@@ -1,0 +1,21 @@
+<launch>
+  <arg name="gnss_time_offset_sec" default="-0.25"/>
+  <arg name="publish_sleep_sec" default="0.004"/>
+  <param name="/use_sim_time" value="true"/>
+  <!-- ENU 동쪽 주행 합성 입력: GNSS 자체 정합 경로를 독립 검증한다. -->
+  <include file="$(find mando_localization)/launch/local_fusion.launch">
+    <arg name="initialize_heading" value="false"/>
+  </include>
+  <include file="$(find mando_localization)/launch/global_fusion.launch">
+    <arg name="initialize_heading" value="false"/>
+  </include>
+  <include file="$(find mando_localization)/launch/safety_and_tf.launch">
+    <arg name="start_supervisor" value="false"/>
+    <arg name="start_output_gate" value="false"/>
+  </include>
+  <test test-name="calibrated_imu_integration" pkg="mando_localization"
+        type="test_calibrated_imu_ros.py" time-limit="65">
+    <param name="gnss_time_offset_sec" value="$(arg gnss_time_offset_sec)"/>
+    <param name="publish_sleep_sec" value="$(arg publish_sleep_sec)"/>
+  </test>
+</launch>

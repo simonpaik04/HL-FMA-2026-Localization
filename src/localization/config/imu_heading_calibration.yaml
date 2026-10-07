@@ -1,0 +1,128 @@
+# CalibratedIMU: 정지 드리프트를 제외하고 시작 방향/GNSS offset을 적용한다.
+# 잠정 시작 기준이며 실차 정확도를 검증한 수치가 아니다.
+encoder_yaw_hold:
+  enabled: true
+  # alive가 갱신되는 feedback.encoder==0 및 speed==0이면 yaw와 차량 Z 각속도를 고정한다.
+  # 비영점 tick(±1 포함)은 즉시 이동으로 처리한다. raw/normalized IMU는 보존한다.
+  max_feedback_age_sec: 0.30
+  # IMU 시각 이전 feedback만 사용한다. 수신 중단/중복 alive는 정지 증거가 아니다.
+  history_max_samples: 500
+  # Header 없는 feedback의 PC 수신 시각 이력 상한. 시간 역행 시 초기화한다.
+
+imu_heading_calibration:
+  enabled: true
+  # GNSS 기반 yaw 보정 사용 여부. false이면 새 보정을 수행하지 않는다.
+
+  direction_mode: forward_start
+  # forward_start: 첫 보정까지 전진 직진을 가정, 반복 보정은 기존 방향과 일치할 때만 허용. signed_encoder: 검증된 속도 부호로 후진도 구분한다.
+  # Gear=0만으로 전진을 판단하지 않는다. signed_encoder는 실제 전·후진 속도 부호 검증 후 사용한다.
+
+  one_shot: false
+  # false: 첫 정렬 뒤에도 새 직진 구간이 조건을 충족하면 반복 정합한다.
+  # true로 바꾸면 최초 GNSS 정렬만 적용한다.
+
+  max_repeat_heading_difference_deg: 30.0
+  # 반복 정렬은 GNSS 차량 방향과 기존 보정 방향이 30도 이내일 때만 허용한다.
+  # (0, 90) 범위. 후진/큰 방향 불일치는 보류하며 실제 속도 부호를 검증하는 값은 아니다.
+
+  max_correction_rate_degps: 90.0
+  # 보정각 적용 속도 상한 [도/초]. 목표 offset까지 서서히 바꾼다.
+
+  history_sec: 2.0
+  # 시각 정합용 IMU·엔코더 기록 보관 시간 [초]. GNSS 최대 허용 지연보다 길어야 한다.
+
+  history_max_samples: 500
+  # IMU·엔코더 기록을 각각 최대 몇 개까지 보관할지 정한다.
+
+  max_imu_gap_sec: 0.10
+  # IMU 보간에 허용하는 두 표본 사이 최대 간격 [초]. 보정각 적용 시간 간격도 이 값으로 제한한다.
+
+  max_imu_age_sec: 0.25
+  # 현재 ROS 시각에서 IMU 측정 시각까지 허용하는 최대 지연 [초].
+
+  max_encoder_age_sec: 0.30
+  # 엔코더 최대 지연 [초]. GNSS 시각에 대응시키는 직전 엔코더 표본의 나이에도 적용한다.
+
+  max_gnss_age_sec: 1.0
+  # 현재 ROS 시각에서 GNSS 측정 시각까지 허용하는 최대 지연 [초].
+
+  max_gnss_time_accuracy_sec: 0.05
+  # GNSS가 보고한 시각 불확실성의 허용 상한 [초]. 실제 센서 간 지연과는 다르다.
+
+  # 헤딩 보정의 GNSS/IMU/encoder 입력에 공유되는 미래 stamp 허용값.
+  max_future_sec: 0.50
+  # 센서 측정 시각이 현재 ROS 시각보다 앞서는 것을 허용하는 최대 범위 [초].
+
+  pending_wait_sec: 0.60
+  # GNSS와 같은 시각의 IMU·엔코더가 도착하기를 기다리는 실제 시간 상한 [초].
+  # 미래 허용 0.5초에 IMU 도착 여유 0.1초를 더한다 (1배속/실시간 기준).
+
+  pending_max_samples: 20
+  # 시각 정합을 기다리는 GNSS 최대 개수. 넘으면 가장 오래된 표본을 버린다.
+
+  clock_ready_timeout_sec: 3.0
+  # 시간 동기화 준비 상태의 유효 시간 [초]. ROS 시각과 실제 경과 시간 모두 확인한다.
+
+  min_speed_mps: 1.0
+  # 보정에 필요한 최소 GNSS 이동 속도 [m/s]. 저속에서 불안정한 이동 방향을 제외한다.
+
+  min_encoder_speed_mps: 0.5
+  # 보정에 필요한 최소 엔코더 속력 [m/s]. 절댓값을 비교한다.
+
+  max_speed_difference_mps: 0.75
+  # GNSS·엔코더 속력 차이 허용값 [m/s]. 아래 비율로 계산한 값과 비교해 큰 쪽을 사용한다.
+
+  max_speed_difference_ratio: 0.4
+  # 속력 차이 허용 비율. GNSS 속력 × 0.4와 위 절대 허용값 중 큰 쪽을 적용한다.
+
+  min_satellites: 6
+  # 유효 GNSS fix와 함께 요구하는 최소 위성 수.
+
+  max_horizontal_accuracy_m: 2.0
+  # GNSS가 보고한 수평 위치 불확실성의 허용 상한 [m].
+
+  max_speed_accuracy_mps: 0.5
+  # GNSS가 보고한 속도 불확실성의 허용 상한 [m/s].
+
+  max_heading_accuracy_deg: 10.0
+  # GNSS가 보고한 이동 방향 불확실성의 허용 상한 [도].
+
+  max_velocity_heading_difference_deg: 5.0
+  # GNSS heading과 동·북 속도 성분으로 계산한 이동 방향의 최대 허용 차이 [도].
+
+  min_window_sec: 3.0
+  # 보정 후보가 연속으로 조건을 만족해야 하는 최소 관측 구간 [초].
+
+  min_samples: 6
+  # 보정 확정에 필요한 최소 GNSS 후보 개수. 시간·거리 조건도 함께 충족해야 한다.
+
+  max_gnss_gap_sec: 0.5
+  # 연속 후보 GNSS 사이 최대 간격 [초]. 넘으면 모아 둔 후보 구간을 초기화한다.
+
+  min_displacement_m: 3.0
+  # 후보 구간의 처음과 끝 GPS 위치 사이 최소 직선 거리 [m]. 누적 주행거리가 아니다.
+
+  max_window_sec: 12.0
+  # 보정 후보 구간에 보관할 최대 시간 [초]. 오래된 후보는 제외한다.
+
+  max_course_spread_deg: 8.0
+  # 후보 구간에서 GNSS 이동 방향의 최대 허용 변화 폭 [도]. 직진 여부를 판단한다.
+
+  max_offset_spread_deg: 5.0
+  # 후보 구간에서 GNSS 방향 − IMU 차량 yaw 차이의 최대 허용 변화 폭 [도].
+
+  max_yaw_rate_degps: 3.0
+  # IMU 자세·자이로로 계산한 yaw 회전 속도의 절댓값 상한 [도/초]. 선회 구간을 제외한다.
+
+  max_tilt_deg: 15.0
+  # 차량 roll·pitch 및 IMU pitch의 절댓값 상한 [도]. 큰 기울기에서 보정을 제외한다.
+
+  max_displacement_course_difference_deg: 15.0
+  # 구간 처음→끝 GPS 변위 방향과 평균 GNSS 이동 방향의 최대 허용 차이 [도].
+
+  heading_stddev_floor_deg: 10.0
+  # 보정 후 추가할 yaw 불확실성의 표준편차 하한 [도]. 구간 내 최대 GNSS 방향 불확실성과 큰 쪽을 사용한다.
+  # 연속 GNSS 표본은 독립이 아니므로 표본 수가 많아도 분산을 나누어 줄이지 않는다.
+
+  held_heading_uncertainty_deg_per_sec: 0.1
+  # 마지막 정합 후 경과 시간에 비례해 추가하는 불확실성 증가율 [도/초]. yaw 값 자체를 돌리는 설정은 아니다.

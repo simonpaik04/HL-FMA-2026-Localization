@@ -1,0 +1,50 @@
+manager_rate_hz: 20.0
+startup_grace_sec: 3.0
+
+devices:
+  imu: /dev/imu
+  # GPS 드라이버가 실제로 여는 수신기 고유 포트와 동일하게 검사한다.
+  gps: /dev/serial/by-id/usb-u-blox_AG_-_www.u-blox.com_u-blox_GNSS_receiver-if00
+
+quality:
+  max_position_variance_m2: 25.0
+
+sources:
+  imu:
+    timeout_sec: 0.20
+    max_future_stamp_sec: 0.05
+  encoder:
+    timeout_sec: 0.20
+    max_future_stamp_sec: 0.05
+  local_odometry:
+    timeout_sec: 0.20
+    max_future_stamp_sec: 0.05
+  global_odometry:
+    timeout_sec: 0.20
+    max_future_stamp_sec: 0.50
+  gps:
+    timeout_sec: 1.00
+    max_future_stamp_sec: 0.50
+
+absolute_sources:
+  gps_enabled: true
+  recovery_consecutive_measurements: 3
+  max_global_consistency_distance_m: 10.0
+
+dead_reckoning:
+  max_duration_sec: 2.0
+  max_distance_m: 10.0
+  limit_policy: first_exceeded
+
+output_gate:
+  max_odometry_age_sec: 0.20
+  max_valid_age_sec: 0.50
+  max_future_stamp_sec: 0.50
+  max_quaternion_normalization_error: 0.001
+  max_covariance_diagonal: 1000000.0
+  require_finite_values: true
+  require_map_frame: true
+  publish_last_pose_when_invalid: false
+
+supervisor:
+  max_evaluation_age_sec: 0.50

@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find mando_localization)/launch/rddf_tracking.launch"/>
+  <test test-name="rddf_tracking_public_topic" pkg="mando_localization"
+        type="test_rddf_tracking_ros.py" time-limit="40"/>
+</launch>

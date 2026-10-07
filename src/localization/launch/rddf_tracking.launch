@@ -1,0 +1,13 @@
+<launch>
+  <arg name="interfaces_config" default="$(find mando_localization)/config/localization_interfaces.yaml"/>
+  <arg name="rddf_initialization_config" default="$(find mando_localization)/config/rddf_initialization.yaml"/>
+  <arg name="tracking_config" default="$(find mando_localization)/config/rddf_tracking.yaml"/>
+  <arg name="node_name" default="rddf_tracker"/>
+  <node pkg="mando_localization" type="rddf_tracker_node.py" name="$(arg node_name)"
+        output="screen" clear_params="true">
+    <rosparam command="load" file="$(arg interfaces_config)"/>
+    <rosparam command="load" file="$(arg rddf_initialization_config)"/>
+    <rosparam command="load" file="$(arg tracking_config)" ns="tracking"/>
+    <param name="package_directory" value="$(find mando_localization)"/>
+  </node>
+</launch>

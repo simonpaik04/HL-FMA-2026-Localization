@@ -1,0 +1,41 @@
+# GPS 없는 실 IMU + 가상 엔코더 테스트. 입력 XY/yaw를 그대로 표시한다.
+rddf_directory: rddf
+refresh_ms: 100
+max_samples_per_topic: 200000
+imu_raw_stale_sec: 0.5
+topics:
+  local: /molit/localization/local/odometry
+  global: /molit/localization/global/odometry
+  gps: /molit/sensors/gps/fix
+  scan: /mando_localization/visualization/lidar/front_scan
+  speed: /erp42_serial/feedback
+  state: /molit/localization/state
+  valid: /molit/localization/valid
+  imu_raw: /molit/sensors/imu/data
+  imu_normalized: /molit/localization/imu/normalized
+  imu_calibrated: /molit/localization/imu/calibrated
+  calibration: /mando_localization/internal/imu/calibration_status
+  diagnostics: /molit/localization/status
+colors:
+  local:
+  - 0.1
+  - 1.0
+  - 0.2
+  global:
+  - 1.0
+  - 0.15
+  - 0.15
+  gps:
+  - 0.7
+  - 0.2
+  - 1.0
+  rddf:
+  - 0.25
+  - 0.5
+  - 1.0
+manual_snap_distance_m: 5.0
+current_rddf_max_distance_m: 5.0
+current_rddf_ambiguity_distance_m: 0.5
+frame_mode: rddf_map
+# 이 테스트는 시작 위치가 고정되며 RDDF 초기화 노드를 실행하지 않는다.
+manual_initialization_enabled: false

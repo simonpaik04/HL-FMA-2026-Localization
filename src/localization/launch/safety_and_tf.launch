@@ -1,0 +1,56 @@
+<launch>
+  <arg name="start_rddf_initialization" default="false"/>
+  <arg name="rddf_initialization_config" default="$(find mando_localization)/config/rddf_initialization.yaml"/>
+  <arg name="interfaces_config" default="$(find mando_localization)/config/localization_interfaces.yaml"/>
+  <arg name="status_policy_config" default="$(find mando_localization)/config/status_policy.yaml"/>
+  <arg name="relocalization_policy_config" default="$(find mando_localization)/config/relocalization_policy.yaml"/>
+  <arg name="gps_reference_config" default="$(find mando_localization)/config/gps_reference.yaml"/>
+  <arg name="tf_config" default="$(find mando_localization)/config/tf_configuration.yaml"/>
+  <arg name="enable_gps_fusion" default="true"/>
+  <!-- deprecated compatibility alias: 새 호출은 start_supervisor를 사용한다. -->
+  <arg name="start_status_manager" default="true"/>
+  <arg name="start_supervisor" default="$(arg start_status_manager)"/>
+  <arg name="start_output_gate" default="true"/>
+  <arg name="start_static_tf_publisher" default="true"/>
+  <arg name="supervisor_node_name" default="localization_supervisor"/>
+  <arg name="output_gate_node_name" default="localization_output_gate"/>
+  <arg name="static_tf_publisher_node_name" default="localization_static_tf_publisher"/>
+  <arg name="imu_driver_node_name" default="xsens_mti_node"/>
+  <arg name="gps_driver_node_name" default="ublox_gps_node"/>
+  <arg name="local_ekf_node_name" default="imu_encoder_local_ekf"/>
+  <arg name="global_ekf_node_name" default="odometry_gps_global_ekf"/>
+
+  <group if="$(arg start_static_tf_publisher)">
+    <node pkg="mando_localization" type="static_transform_publisher_node"
+          name="$(arg static_tf_publisher_node_name)" output="screen" clear_params="true">
+      <rosparam command="load" file="$(arg tf_config)"/>
+      <rosparam command="load" file="$(arg interfaces_config)"/>
+      <param name="static_transforms_parameter" value="static_transforms"/>
+      <param name="expected_local_owner" value="$(arg local_ekf_node_name)"/>
+      <param name="expected_global_owner" value="$(arg global_ekf_node_name)"/>
+    </node>
+  </group>
+
+  <group if="$(arg start_supervisor)">
+    <node pkg="mando_localization" type="localization_supervisor_node"
+          name="$(arg supervisor_node_name)" output="screen" clear_params="true">
+      <rosparam command="load" file="$(arg interfaces_config)"/>
+      <rosparam command="load" file="$(arg status_policy_config)"/>
+      <param name="initialization/required" value="$(arg start_rddf_initialization)"/>
+      <rosparam command="load" file="$(arg relocalization_policy_config)"/>
+      <rosparam command="load" file="$(arg gps_reference_config)"/>
+      <param name="absolute_sources/gps_enabled" value="$(arg enable_gps_fusion)"/>
+      <param name="nodes/imu_driver" value="$(arg imu_driver_node_name)"/>
+      <param name="nodes/gps_driver" value="$(arg gps_driver_node_name)"/>
+    </node>
+  </group>
+
+  <group if="$(arg start_output_gate)">
+    <node pkg="mando_localization" type="localization_output_gate_node"
+          name="$(arg output_gate_node_name)" output="screen" clear_params="true">
+      <rosparam command="load" file="$(arg interfaces_config)"/>
+      <rosparam command="load" file="$(arg status_policy_config)"/>
+      <param name="initialization/required" value="$(arg start_rddf_initialization)"/>
+    </node>
+  </group>
+</launch>

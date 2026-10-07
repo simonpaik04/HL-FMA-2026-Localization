@@ -1,0 +1,11 @@
+<launch>
+  <param name="/use_sim_time" value="true"/>
+  <include file="$(find mando_localization)/launch/local_fusion.launch"/>
+  <include file="$(find mando_localization)/launch/global_fusion.launch"/>
+  <include file="$(find mando_localization)/launch/safety_and_tf.launch">
+    <arg name="start_supervisor" value="false"/>
+    <arg name="start_output_gate" value="false"/>
+  </include>
+  <test test-name="encoder_yaw_hold_integration" pkg="mando_localization"
+        type="test_encoder_yaw_hold_ros.py" time-limit="65"/>
+</launch>

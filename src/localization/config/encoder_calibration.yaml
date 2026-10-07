@@ -1,0 +1,32 @@
+encoder:
+  # Arduino SerialFeedBack.speed(m/s)를 그대로 쓰는 기본 계약이다.
+  speed_scale: 1.0
+  direction_sign: 1
+  speed_variance_m2ps2: 0.25
+  # Ackermann 차량의 base_link 횡속도는 정상 접지 주행에서 0이라는
+  # nonholonomic 모델 제약이다. GPS 잡음으로 생긴 Global vy가 blackout 동안
+  # 적분되지 않도록 Local/Global EKF가 함께 사용한다.
+  lateral_velocity_constraint:
+    variance_m2ps2: 0.01
+    calibration_state: model_assumption
+    source: "ackermann_no_side_slip_at_rear_axle_center"
+  unobserved_variance: 1000000.0
+  max_abs_speed_mps: 30.0
+  max_abs_encoder_delta_100ms: 100000
+  # SerialFeedBack에는 Header가 없으므로 PC 수신 시각을 Twist stamp로 사용한다.
+  # uint8 alive는 매 feedback 발행마다 증가하며 같은 값이 반복되면 거부한다.
+  require_alive_counter_change: true
+
+  # 조향 ADC와 encoder delta는 보정 전 진단에만 쓰며 Twist 계산에는 쓰지 않는다.
+  calibration_state: unmeasured
+  encoder_delta_window_sec: 0.10
+  meter_per_tick_enabled: false
+  meter_per_tick_m: 0.0
+  delta_consistency_tolerance_mps: 1.0
+
+  steering:
+    enabled: false
+    adc_center: 0
+    adc_per_rad: 0.0
+    min_adc: 0
+    max_adc: 65535

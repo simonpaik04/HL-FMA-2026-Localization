@@ -1,0 +1,13 @@
+<launch>
+  <!-- 실시간 입력과 명시적으로 선택한 기록 결과에 같은 renderer/config를 사용한다. -->
+  <arg name="config" default="$(find mando_localization)/config/localization_viewer.yaml"/>
+  <arg name="node_name" default="mando_localization_rviz"/>
+  <arg name="mode" default="live"/>
+  <arg name="processed_bag" default=""/>
+  <arg name="source_bag" default=""/>
+  <arg name="bag_args" default="$(eval (' --processed-bag &quot;' + arg('processed_bag') + '&quot;') if arg('processed_bag') else '')"/>
+  <arg name="source_args" default="$(eval (' --source-bag &quot;' + arg('source_bag') + '&quot;') if arg('source_bag') else '')"/>
+  <node pkg="mando_localization" type="localization_viewer.py" name="$(arg node_name)"
+        args="--mode $(arg mode) --config &quot;$(arg config)&quot; $(arg bag_args) $(arg source_args)"
+        output="screen" required="false"/>
+</launch>

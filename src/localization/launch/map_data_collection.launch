@@ -1,0 +1,73 @@
+<launch>
+  <arg name="start_rddf_initialization" default="true"/>
+  <arg name="rddf_initialization_config" default="$(find mando_localization)/config/rddf_initialization.yaml"/>
+  <arg name="lidar_driver_config" default="$(find mando_localization)/config/lidar_driver.yaml"/>
+  <arg name="lidar_serial_port" default="/dev/lidar"/>
+  <arg name="lidar_frame_id" default="laser_link"/>
+  <arg name="lidar_scan_topic" default="/molit/sensors/lidar/scan"/>
+  <arg name="lidar_driver_node_name" default="mando_rplidar_s2"/>
+  <arg name="rviz_config"
+       default="$(find mando_localization)/config/localization_viewer.yaml"/>
+
+  <arg name="start_encoder_driver" default="true"/>
+  <arg name="start_imu_driver" default="true"/>
+  <arg name="start_calibrated_imu" default="true"/>
+  <arg name="initialize_heading" default="true"/>
+  <arg name="initial_heading_config" default="$(find mando_localization)/config/initial_heading.yaml"/>
+  <arg name="calibrated_imu_node_name" default="calibrated_imu"/>
+  <arg name="start_gps_driver" default="true"/>
+  <arg name="start_lidar_driver" default="true"/>
+  <arg name="start_rviz" default="true"/>
+  <arg name="start_recording" default="true"/>
+  <arg name="time_sync_config" default="$(find mando_localization)/config/time_sync.yaml"/>
+  <arg name="gps_driver_config" default="$(find mando_localization)/config/gps_driver.yaml"/>
+  <arg name="imu_heading_config" default="$(find mando_localization)/config/imu_heading_calibration.yaml"/>
+
+  <arg name="bag_prefix" default="/tmp/mando_map_collection"/>
+  <arg name="bag_split_size_mb" default="2048"/>
+  <arg name="bag_min_space" default="10G"/>
+  <!-- Odometry로 재생성 가능한 누적 경로는 매 갱신마다 전체 배열이 반복되므로 기록하지 않는다. -->
+  <arg name="bag_exclude_regex"
+       default="^(/molit/localization/(path|markers)|/mando_localization/visualization/debug/scene)$"/>
+
+  <!-- 현장 실센서 기록에는 wall time을 사용한다. /clock은 재생할 때 생성한다. -->
+  <param name="/use_sim_time" type="bool" value="false"/>
+
+  <!-- Local/Global/RDDF 화면은 bringup의 공통 viewer.launch 한 곳에서 실행한다. -->
+  <group if="$(arg start_lidar_driver)">
+    <!-- LiDAR가 빠지면 LiDAR 없는 주행을 계속 기록하지 않고 전체 launch를 종료한다. -->
+    <node pkg="rplidar_ros" type="rplidarNode"
+          name="$(arg lidar_driver_node_name)" output="screen" required="true"
+          clear_params="true">
+      <rosparam command="load" file="$(arg lidar_driver_config)"/>
+      <param name="serial_port" type="string" value="$(arg lidar_serial_port)"/>
+      <param name="frame_id" type="string" value="$(arg lidar_frame_id)"/>
+      <remap from="scan" to="$(arg lidar_scan_topic)"/>
+    </node>
+  </group>
+
+  <include file="$(find mando_localization)/launch/bringup.launch">
+    <arg name="start_rddf_initialization" value="$(arg start_rddf_initialization)"/>
+    <arg name="rddf_initialization_config" value="$(arg rddf_initialization_config)"/>
+    <arg name="initialize_heading" value="$(arg initialize_heading)"/>
+    <arg name="initial_heading_config" value="$(arg initial_heading_config)"/>
+    <arg name="start_encoder_driver" value="$(arg start_encoder_driver)"/>
+    <arg name="start_imu_driver" value="$(arg start_imu_driver)"/>
+    <arg name="start_calibrated_imu" value="$(arg start_calibrated_imu)"/>
+    <arg name="calibrated_imu_node_name" value="$(arg calibrated_imu_node_name)"/>
+    <arg name="start_gps_driver" value="$(arg start_gps_driver)"/>
+    <arg name="time_sync_config" value="$(arg time_sync_config)"/>
+    <arg name="gps_driver_config" value="$(arg gps_driver_config)"/>
+    <arg name="imu_heading_config" value="$(arg imu_heading_config)"/>
+    <arg name="start_static_tf_publisher" value="true"/>
+    <arg name="rviz_config" value="$(arg rviz_config)"/>
+    <arg name="start_rviz" value="$(arg start_rviz)"/>
+  </include>
+
+  <group if="$(arg start_recording)">
+    <!-- -a로 외부 센서도 담되, 원본 Odometry에서 복원 가능한 누적 시각화만 제외한다. -->
+    <node pkg="rosbag" type="record" name="mapping_rosbag_recorder"
+          output="screen" required="true"
+          args="-a --exclude='$(arg bag_exclude_regex)' --lz4 --split --size=$(arg bag_split_size_mb) --repeat-latched --min-space=$(arg bag_min_space) -O '$(arg bag_prefix)'"/>
+  </group>
+</launch>

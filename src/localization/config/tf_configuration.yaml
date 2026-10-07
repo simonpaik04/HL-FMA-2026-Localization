@@ -1,0 +1,51 @@
+schema_version: 1
+strict_validation: true
+
+# base_link 원점은 차량 뒷바퀴 축 중심이며 REP-103 축을 사용한다.
+base_link_reference:
+  origin: rear_axle_center
+  x_axis: forward
+  y_axis: left
+  z_axis: up
+
+# 동적 TF는 이 파일에서 값이 아니라 단일 소유자만 선언한다.
+dynamic_transforms:
+  - parent_frame: map
+    child_frame: odom
+    owner_node: odometry_gps_global_ekf
+    source: robot_localization_global
+  - parent_frame: odom
+    child_frame: base_link
+    owner_node: imu_encoder_local_ekf
+    source: robot_localization_local
+
+# IMU 장착 위치와 방향은 2026-09-06 사용자 확인값이다.
+# GPS의 미측정 축 0은 자리표시자다. LiDAR 위치는 2026-09-05,
+# 위아래 뒤집힘과 후방 장착 방향은 2026-09-07 사용자 확인값이다.
+static_transforms:
+  - parent_frame: base_link
+    child_frame: imu_link
+    translation_m: [0.20, 0.0, 0.0]
+    rotation_rpy_deg: [0.0, 0.0, 0.0]
+    enabled: true
+    calibration_state: verified
+    measured_at: ""
+    source: user_confirmed_mount_position_and_axes_2026-09-06
+  - parent_frame: base_link
+    child_frame: gps_link
+    translation_m: [0.65, 0.0, 0.0]
+    rotation_rpy_deg: [0.0, 0.0, 0.0]
+    enabled: false
+    calibration_state: unmeasured
+    measured_at: ""
+    source: ""
+  - parent_frame: base_link
+    child_frame: laser_link
+    translation_m: [1.05, 0.0, 0.0]
+    # roll=180: 윗면이 아래, yaw=180: 전방 축이 차량 뒤쪽.
+    # 장착 회전은 TF에서만 적용하며 lidar_driver.yaml의 inverted=false를 유지한다.
+    rotation_rpy_deg: [180.0, 0.0, 180.0]
+    enabled: true
+    calibration_state: measured
+    measured_at: "2026-09-05"
+    source: user_confirmed_position_2026-09-05_upside_down_rear_facing_2026-09-07

@@ -1,0 +1,5 @@
+# Xsens Motion Tracker Dev. Board (현재 장치 시리얼 DB8GG04M)
+SUBSYSTEM=="tty", ACTION=="add", ATTRS{idVendor}=="2639", ATTRS{idProduct}=="0300", ATTRS{serial}=="DB8GG04M", GROUP="dialout", MODE="0660", SYMLINK+="imu"
+
+# u-blox C099 보드의 ZED-F9P UART1 (ODIN-W2와 GNSS USB VCP는 의도적으로 제외)
+SUBSYSTEM=="tty", ACTION=="add", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="0502", ATTRS{serial}=="DBT042C1", GROUP="dialout", MODE="0660", SYMLINK+="mando_gps"

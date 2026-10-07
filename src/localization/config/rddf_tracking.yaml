@@ -1,0 +1,5 @@
+publish_rate_hz: 10.0
+max_distance_m: 5.0
+ambiguity_distance_m: 0.5
+pose_stale_sec: 0.5
+valid_stale_sec: 1.0

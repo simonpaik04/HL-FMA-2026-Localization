@@ -1,0 +1,49 @@
+reference:
+  # first_fix는 지도 없이 개발할 때만 쓴다. 실제 map 사용 시 manual_datum으로 바꾼다.
+  mode: first_fix
+  measured: false
+  measured_at: ""
+  source: ""
+  latitude_deg: 0.0
+  longitude_deg: 0.0
+  altitude_m: 0.0
+  yaw_offset_rad: 0.0
+  map_x_m: 0.0
+  map_y_m: 0.0
+  map_z_m: 0.0
+
+# NavSatFix는 gps_link(안테나 위상 중심)의 위치다. Global EKF에는 base_link
+# 위치를 넣어야 하므로 GPS 측정 시각의 Local Odometry yaw로 레버암을 map 좌표계에
+# 회전한 뒤 제거한다. x/y는 base_link -> gps_link 기준이다.
+lever_arm:
+  x_m: 0.65
+  y_m: 0.0
+  # 기존 키 유지: 이제 GPS를 둘러싼 Local 보간 표본 사이의 최대 간격이다.
+  # 최신 Local과 GPS 측정 시각의 차이는 이 값으로 제한하지 않는다.
+  max_yaw_stamp_skew_sec: 0.10
+  manual_datum_base_yaw_rad: 0.0
+  calibration_state: provisional
+  source: "user_report_2026-09-04_longitudinal_only"
+
+timing:
+  local_history_duration_sec: 2.0
+  local_history_max_samples: 200
+  pending_wait_sec: 0.60
+  pending_max_samples: 20
+  require_clock_ready: true
+  clock_ready_timeout_sec: 3.0
+
+quality:
+  minimum_fix_status: 0
+  max_message_age_sec: 1.0
+  # GPS 측정 stamp가 현재 ROS 시각보다 최대 0.5초 앞서는 것을 허용한다.
+  max_future_stamp_sec: 0.50
+  fallback_horizontal_variance_m2: 25.0
+  fallback_vertical_variance_m2: 100.0
+  max_horizontal_variance_m2: 25.0
+  max_vertical_variance_m2: 100.0
+  max_step_distance_m: 50.0
+  unobserved_variance: 1000000.0
+  max_position_innovation_m: 10.0
+  max_mahalanobis_distance: 5.0
+  max_reanchor_candidate_distance_m: 2.0

@@ -1,0 +1,7 @@
+<launch>
+  <!-- 0.46 s future GNSS must wait for matching IMU instead of timing out at 0.15 s. -->
+  <include file="$(find mando_localization)/test/calibrated_imu.test">
+    <arg name="gnss_time_offset_sec" value="0.46"/>
+    <arg name="publish_sleep_sec" value="0.01"/>
+  </include>
+</launch>

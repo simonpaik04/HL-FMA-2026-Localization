@@ -1,0 +1,171 @@
+<launch>
+  <arg name="start_sensor_timing_monitor" default="true"/>
+  <arg name="start_rddf_initialization" default="true"/>
+  <arg name="start_rddf_tracking" default="true"/>
+  <arg name="rddf_tracking_config" default="$(find mando_localization)/config/rddf_tracking.yaml"/>
+  <arg name="rddf_initialization_config" default="$(find mando_localization)/config/rddf_initialization.yaml"/>
+  <!-- 모든 설정 파일은 차량별 YAML로 교체할 수 있다. -->
+  <arg name="interfaces_config" default="$(find mando_localization)/config/localization_interfaces.yaml"/>
+  <arg name="imu_driver_config" default="$(find mando_localization)/config/imu_driver.yaml"/>
+  <arg name="imu_heading_config" default="$(find mando_localization)/config/imu_heading_calibration.yaml"/>
+  <arg name="initialize_heading" default="true"/>
+  <arg name="initial_heading_config" default="$(find mando_localization)/config/initial_heading.yaml"/>
+  <arg name="gps_driver_config" default="$(find mando_localization)/config/gps_driver.yaml"/>
+  <arg name="time_sync_config" default="$(find mando_localization)/config/time_sync.yaml"/>
+  <arg name="encoder_driver_config" default="$(find mando_localization)/config/encoder_driver.yaml"/>
+  <arg name="encoder_config" default="$(find mando_localization)/config/encoder_calibration.yaml"/>
+  <arg name="tf_config" default="$(find mando_localization)/config/tf_configuration.yaml"/>
+  <arg name="local_ekf_config" default="$(find mando_localization)/config/ekf_local.yaml"/>
+  <arg name="global_ekf_config" default="$(find mando_localization)/config/ekf_global.yaml"/>
+  <arg name="gps_reference_config" default="$(find mando_localization)/config/gps_reference.yaml"/>
+  <arg name="status_policy_config" default="$(find mando_localization)/config/status_policy.yaml"/>
+  <arg name="relocalization_policy_config" default="$(find mando_localization)/config/relocalization_policy.yaml"/>
+  <arg name="visualization_config" default="$(find mando_localization)/config/visualization.yaml"/>
+  <arg name="rviz_config" default="$(find mando_localization)/config/localization_viewer.yaml"/>
+
+  <arg name="start_encoder_driver" default="true"/>
+  <arg name="start_imu_driver" default="false"/>
+  <arg name="start_gps_driver" default="false"/>
+  <arg name="motion_source" default="encoder"/>
+  <arg name="start_interface_adapter" default="true"/>
+  <arg name="start_imu_normalizer" default="true"/>
+  <arg name="start_calibrated_imu" default="true"/>
+  <arg name="start_local_ekf" default="true"/>
+  <arg name="enable_gps_fusion" default="true"/>
+  <arg name="start_global_ekf" default="true"/>
+  <!-- start_status_manager는 기존 launch 호출 호환용 별칭이다. -->
+  <arg name="start_status_manager" default="true"/>
+  <arg name="start_supervisor" default="$(arg start_status_manager)"/>
+  <arg name="start_output_gate" default="true"/>
+  <arg name="start_static_tf_publisher" default="true"/>
+  <arg name="start_visualization" default="true"/>
+  <arg name="start_rviz" default="true"/>
+
+  <!-- 실제 ROS node name은 launch argument로 변경한다. -->
+  <arg name="encoder_driver_node_name" default="mando_encoder_serial"/>
+  <arg name="imu_driver_node_name" default="xsens_mti_node"/>
+  <arg name="gps_driver_node_name" default="ublox_gps_node"/>
+  <arg name="imu_normalizer_node_name" default="imu_normalizer"/>
+  <arg name="calibrated_imu_node_name" default="calibrated_imu"/>
+  <arg name="interface_adapter_node_name" default="localization_interface_adapter"/>
+  <arg name="encoder_adapter_node_name" default="encoder_to_twist_adapter"/>
+  <arg name="local_ekf_node_name" default="imu_encoder_local_ekf"/>
+  <arg name="gps_quality_gate_node_name" default="odometry_gps_fusion"/>
+  <arg name="global_ekf_node_name" default="odometry_gps_global_ekf"/>
+  <arg name="supervisor_node_name" default="localization_supervisor"/>
+  <arg name="output_gate_node_name" default="localization_output_gate"/>
+  <arg name="static_tf_publisher_node_name" default="localization_static_tf_publisher"/>
+  <arg name="visualization_node_name" default="localization_visualization"/>
+  <arg name="rviz_node_name" default="mando_localization_rviz"/>
+
+  <!-- 전역 사본은 상태 패널과 운영 중 파라미터 확인에 사용한다. -->
+  <rosparam command="load" file="$(arg interfaces_config)" ns="/mando_localization/interfaces"/>
+  <rosparam command="load" file="$(arg visualization_config)" ns="/mando_localization/visualization"/>
+
+  <include file="$(find mando_localization)/launch/sensors.launch">
+    <arg name="start_encoder_driver" value="$(arg start_encoder_driver)"/>
+    <arg name="start_imu_driver" value="$(arg start_imu_driver)"/>
+    <arg name="start_gps_driver" value="$(arg start_gps_driver)"/>
+    <arg name="encoder_driver_node_name" value="$(arg encoder_driver_node_name)"/>
+    <arg name="imu_driver_node_name" value="$(arg imu_driver_node_name)"/>
+    <arg name="gps_driver_node_name" value="$(arg gps_driver_node_name)"/>
+    <arg name="encoder_driver_config" value="$(arg encoder_driver_config)"/>
+    <arg name="imu_driver_config" value="$(arg imu_driver_config)"/>
+    <arg name="gps_driver_config" value="$(arg gps_driver_config)"/>
+    <arg name="time_sync_config" value="$(arg time_sync_config)"/>
+  </include>
+
+  <include file="$(find mando_localization)/launch/local_fusion.launch">
+    <arg name="start_rddf_initialization" value="$(arg start_rddf_initialization)"/>
+    <arg name="rddf_initialization_config" value="$(arg rddf_initialization_config)"/>
+    <arg name="initialize_heading" value="$(eval arg('initialize_heading') and not arg('start_rddf_initialization'))"/>
+    <arg name="initial_heading_config" value="$(arg initial_heading_config)"/>
+    <arg name="interfaces_config" value="$(arg interfaces_config)"/>
+    <arg name="imu_driver_config" value="$(arg imu_driver_config)"/>
+    <arg name="imu_heading_config" value="$(arg imu_heading_config)"/>
+    <arg name="encoder_config" value="$(arg encoder_config)"/>
+    <arg name="local_ekf_config" value="$(arg local_ekf_config)"/>
+    <arg name="motion_source" value="$(arg motion_source)"/>
+    <arg name="start_interface_adapter" value="$(arg start_interface_adapter)"/>
+    <arg name="start_imu_normalizer" value="$(arg start_imu_normalizer)"/>
+    <arg name="start_calibrated_imu" value="$(arg start_calibrated_imu)"/>
+    <arg name="start_local_ekf" value="$(arg start_local_ekf)"/>
+    <arg name="imu_normalizer_node_name" value="$(arg imu_normalizer_node_name)"/>
+    <arg name="calibrated_imu_node_name" value="$(arg calibrated_imu_node_name)"/>
+    <arg name="interface_adapter_node_name" value="$(arg interface_adapter_node_name)"/>
+    <arg name="encoder_adapter_node_name" value="$(arg encoder_adapter_node_name)"/>
+    <arg name="local_ekf_node_name" value="$(arg local_ekf_node_name)"/>
+  </include>
+
+  <include file="$(find mando_localization)/launch/gps_fusion.launch">
+    <arg name="start_sensor_timing_monitor" value="$(arg start_sensor_timing_monitor)"/>
+    <arg name="start_rddf_initialization" value="$(arg start_rddf_initialization)"/>
+    <arg name="rddf_initialization_config" value="$(arg rddf_initialization_config)"/>
+    <arg name="enable_gps_fusion" value="$(arg enable_gps_fusion)"/>
+    <arg name="interfaces_config" value="$(arg interfaces_config)"/>
+    <arg name="gps_reference_config" value="$(arg gps_reference_config)"/>
+    <arg name="status_policy_config" value="$(arg status_policy_config)"/>
+    <arg name="gps_quality_gate_node_name" value="$(arg gps_quality_gate_node_name)"/>
+    <arg name="gps_driver_config" value="$(arg gps_driver_config)"/>
+    <arg name="time_sync_config" value="$(arg time_sync_config)"/>
+  </include>
+
+
+  <include file="$(find mando_localization)/launch/global_fusion.launch">
+    <arg name="initialize_heading" value="$(eval arg('initialize_heading') and not arg('start_rddf_initialization'))"/>
+    <arg name="initial_heading_config" value="$(arg initial_heading_config)"/>
+    <arg name="start_global_ekf" value="$(arg start_global_ekf)"/>
+    <arg name="global_ekf_config" value="$(arg global_ekf_config)"/>
+    <arg name="global_ekf_node_name" value="$(arg global_ekf_node_name)"/>
+  </include>
+
+  <include file="$(find mando_localization)/launch/safety_and_tf.launch">
+    <arg name="start_rddf_initialization" value="$(arg start_rddf_initialization)"/>
+    <arg name="rddf_initialization_config" value="$(arg rddf_initialization_config)"/>
+    <arg name="interfaces_config" value="$(arg interfaces_config)"/>
+    <arg name="status_policy_config" value="$(arg status_policy_config)"/>
+    <arg name="relocalization_policy_config" value="$(arg relocalization_policy_config)"/>
+    <arg name="gps_reference_config" value="$(arg gps_reference_config)"/>
+    <arg name="tf_config" value="$(arg tf_config)"/>
+    <arg name="enable_gps_fusion" value="$(arg enable_gps_fusion)"/>
+    <arg name="start_status_manager" value="$(arg start_status_manager)"/>
+    <arg name="start_supervisor" value="$(arg start_supervisor)"/>
+    <arg name="start_output_gate" value="$(arg start_output_gate)"/>
+    <arg name="start_static_tf_publisher" value="$(arg start_static_tf_publisher)"/>
+    <arg name="supervisor_node_name" value="$(arg supervisor_node_name)"/>
+    <arg name="output_gate_node_name" value="$(arg output_gate_node_name)"/>
+    <arg name="static_tf_publisher_node_name" value="$(arg static_tf_publisher_node_name)"/>
+    <arg name="imu_driver_node_name" value="$(arg imu_driver_node_name)"/>
+    <arg name="gps_driver_node_name" value="$(arg gps_driver_node_name)"/>
+    <arg name="local_ekf_node_name" value="$(arg local_ekf_node_name)"/>
+    <arg name="global_ekf_node_name" value="$(arg global_ekf_node_name)"/>
+  </include>
+
+  <include if="$(arg start_rddf_tracking)" file="$(find mando_localization)/launch/rddf_tracking.launch">
+    <arg name="interfaces_config" value="$(arg interfaces_config)"/>
+    <arg name="rddf_initialization_config" value="$(arg rddf_initialization_config)"/>
+    <arg name="tracking_config" value="$(arg rddf_tracking_config)"/>
+  </include>
+
+  <include file="$(find mando_localization)/launch/visualization.launch">
+    <arg name="interfaces_config" value="$(arg interfaces_config)"/>
+    <arg name="visualization_config" value="$(arg visualization_config)"/>
+    <arg name="rviz_config" value="$(arg rviz_config)"/>
+    <arg name="start_visualization" value="$(arg start_visualization)"/>
+    <arg name="start_rviz" value="$(arg start_rviz)"/>
+    <arg name="visualization_node_name" value="$(arg visualization_node_name)"/>
+    <arg name="rviz_node_name" value="$(arg rviz_node_name)"/>
+  </include>
+
+  <param name="/mando_localization/initialization/enabled" value="$(arg start_rddf_initialization)"/>
+  <group if="$(arg start_rddf_initialization)">
+    <node pkg="mando_localization" type="rddf_initializer_node.py" name="rddf_initializer"
+          output="screen" clear_params="true" required="true">
+      <rosparam command="load" file="$(arg interfaces_config)"/>
+      <rosparam command="load" file="$(arg gps_reference_config)"/>
+      <rosparam command="load" file="$(arg rddf_initialization_config)"/>
+      <param name="package_directory" value="$(find mando_localization)"/>
+      <param name="heading_service" value="/$(arg calibrated_imu_node_name)/set_initial_heading"/>
+    </node>
+  </group>
+</launch>

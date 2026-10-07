@@ -1,0 +1,60 @@
+# xsens_mti_driver 파라미터. Xsens DB8GG04M은 udev에서 /dev/imu로 고정한다.
+port: /dev/imu
+# 2026-08-30 실제 MTi-3 자동 탐색 결과: device ID 03889250, 115200 baud.
+device_id: "03889250"
+baudrate: 115200
+frame_id: imu_link
+publisher_queue_size: 10
+# MTi-3의 미동기화 UTC 대신 PC 수신시각을 사용한다.
+time_option: 2
+
+# MTi-3 온보드 필터 설정은 장치 비휘발성 메모리에 유지된다.
+# 프로파일을 바꿀 때만 두 enable 값을 일시적으로 true로 설정한다.
+enable_deviceConfig: false
+enable_filter_config: false
+mti_filter_option: 4  # MTi-3: vru_general (자기장 방향 참조 없음)
+
+# EKF 입력에는 표준 sensor_msgs/Imu만 필요하다. 드라이버의 TF 발행은 금지한다.
+pub_imu: true
+# 장치 재설정 시 pub_imu만으로는 필수 출력이 구성되지 않는다.
+pub_quaternion: true
+pub_mag: false
+pub_angular_velocity: true
+pub_acceleration: true
+pub_free_acceleration: false
+pub_dq: false
+pub_dv: false
+pub_sampletime: false
+pub_temperature: false
+pub_pressure: false
+pub_gnss: false
+pub_twist: false
+pub_transform: false
+pub_positionLLA: false
+pub_velocity: false
+
+hardware:
+  usb_serial: DB8GG04M
+  calibration_state: unverified
+
+# 2026-08-31 정지 10분 bag의 첫 60초를 제외한 539.668초 구간에서 계산한
+# sample stddev다. 정지 noise floor일 뿐 모터·진동·자기장·절대 yaw 정확도를
+# 포함한 운영 covariance가 아니므로 후속 시험 뒤 verified 값으로 교체한다.
+covariance_override:
+  enabled: true
+  calibration_state: measured
+  measured_at: "2026-08-31T01:02:55+09:00/599.717s"
+  source: "rosbag/imu_stationary_20260831/imu_stationary.bag; stationary motor-off; first 60 s excluded"
+  linear_acceleration_stddev_mps2: [0.003685438, 0.003944295, 0.004177912]
+  angular_velocity_stddev_radps: [0.000319255, 0.000331483, 0.000300778]
+  orientation_stddev_rad: [0.000294491, 0.000363537, 0.000477059]
+
+# imu_normalizer_node 검증값이다. 드라이버 파라미터와 같은 파일에서 관리한다.
+imu:
+  max_message_age_sec: 0.25
+  max_future_stamp_sec: 0.05
+  min_quaternion_norm: 0.000000000001
+  max_quaternion_normalization_error: 0.001
+  max_covariance_diagonal: 1000000.0
+  # 원본 covariance가 모두 0이면 override가 활성화된 경우에만 실측값으로 교체한다.
+  require_positive_covariance_diagonal: true

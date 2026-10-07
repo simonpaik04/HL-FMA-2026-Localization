@@ -1,0 +1,11 @@
+# RPLIDAR S2M1 실차 드라이버 설정이다.
+# 지도 수집 시 launch에서 serial_port와 frame_id를 다시 명시해 계약 이탈을 막는다.
+serial_port: /dev/lidar
+serial_baudrate: 1000000
+frame_id: laser_link
+# 뒤집힘/후방 장착은 tf_configuration.yaml의 roll/yaw=180도로 보정한다.
+# 여기서도 inverted를 켜면 scan 순서와 장착 회전이 중복 보정된다.
+inverted: false
+angle_compensate: true
+scan_frequency: 10.0
+initial_reset: true
