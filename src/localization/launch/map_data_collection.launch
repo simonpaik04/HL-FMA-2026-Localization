@@ -16,6 +16,9 @@
   <arg name="initial_heading_config" default="$(find mando_localization)/config/initial_heading.yaml"/>
   <arg name="calibrated_imu_node_name" default="calibrated_imu"/>
   <arg name="start_gps_driver" default="true"/>
+  <!-- false keeps manual RDDF initialization and IMU/encoder odometry active
+       without treating an intentionally absent GPS as an outage. -->
+  <arg name="enable_gps_fusion" default="$(arg start_gps_driver)"/>
   <arg name="start_lidar_driver" default="true"/>
   <arg name="start_rviz" default="true"/>
   <arg name="start_recording" default="true"/>
@@ -56,6 +59,7 @@
     <arg name="start_calibrated_imu" value="$(arg start_calibrated_imu)"/>
     <arg name="calibrated_imu_node_name" value="$(arg calibrated_imu_node_name)"/>
     <arg name="start_gps_driver" value="$(arg start_gps_driver)"/>
+    <arg name="enable_gps_fusion" value="$(arg enable_gps_fusion)"/>
     <arg name="time_sync_config" value="$(arg time_sync_config)"/>
     <arg name="gps_driver_config" value="$(arg gps_driver_config)"/>
     <arg name="imu_heading_config" value="$(arg imu_heading_config)"/>

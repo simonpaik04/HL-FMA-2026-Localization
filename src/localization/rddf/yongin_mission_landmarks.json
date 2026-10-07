@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "coordinate_frame": "map",
+  "distance_reference": "RDDF arc length from route start",
+  "origin": {
+    "latitude": 37.288731,
+    "longitude": 127.1072336
+  },
+  "projection_method": "nearest point on the named global RDDF polyline",
+  "landmarks": {
+    "1_left": {
+      "source_segment_points": 22,
+      "segment_max_projection_error_m": 0.0317649816,
+      "hill_zone_start_s": {
+        "source_file": "mission_markers/yongin_1_left_경사로.csv",
+        "source_index": 0,
+        "latitude": 37.2890204028,
+        "longitude": 127.1073629335,
+        "east_m": 11.468512,
+        "north_m": 32.118808,
+        "projected_s_m": 25.9294712343,
+        "projection_error_m": 0.0,
+        "global_rddf_index": 52
+      },
+      "hill_zone_end_s": {
+        "source_file": "mission_markers/yongin_1_left_경사로.csv",
+        "source_index": 21,
+        "latitude": 37.2890513449,
+        "longitude": 127.1072546393,
+        "east_m": 1.865636,
+        "north_m": 35.552855,
+        "projected_s_m": 36.1281013511,
+        "projection_error_m": 0.0,
+        "global_rddf_index": 73
+      },
+      "derived_hill_stop_s_m": 31.0287862927
+    },
+    "1_right": {
+      "source_segment_points": 22,
+      "segment_max_projection_error_m": 0.0272298534,
+      "hill_zone_start_s": {
+        "source_file": "mission_markers/yongin_1_right_경사로.csv",
+        "source_index": 0,
+        "latitude": 37.2890478772,
+        "longitude": 127.1073756739,
+        "east_m": 12.598262,
+        "north_m": 35.168005,
+        "projected_s_m": 25.7682296748,
+        "projection_error_m": 0.0,
+        "global_rddf_index": 53
+      },
+      "hill_zone_end_s": {
+        "source_file": "mission_markers/yongin_1_right_경사로.csv",
+        "source_index": 21,
+        "latitude": 37.2890793528,
+        "longitude": 127.1072673798,
+        "east_m": 2.995386,
+        "north_m": 38.661259,
+        "projected_s_m": 35.9868936586,
+        "projection_error_m": 0.0,
+        "global_rddf_index": 74
+      },
+      "derived_hill_stop_s_m": 30.8775616667
+    },
+    "2": {
+      "stop_line_s": {
+        "source_file": "mission_markers/yongin_2_신호등1.csv",
+        "source_index": 0,
+        "latitude": 37.2887934048,
+        "longitude": 127.1072271466,
+        "east_m": -0.572246,
+        "north_m": 6.92588,
+        "projected_s_m": 58.0297205375,
+        "projection_error_m": 0.0014106916,
+        "global_rddf_nearest_index": 150
+      }
+    },
+    "4": {
+      "stop_line_s": {
+        "source_file": "mission_markers/yongin_4_신호등2.csv",
+        "source_index": 0,
+        "latitude": 37.2887355216,
+        "longitude": 127.1071168408,
+        "east_m": -10.353504,
+        "north_m": 0.501819,
+        "projected_s_m": 33.898125592,
+        "projection_error_m": 0.0,
+        "global_rddf_index": 75
+      }
+    },
+    "7": {
+      "stop_line_s": {
+        "source_file": "mission_markers/yongin_7_신호등3.csv",
+        "source_index": 0,
+        "latitude": 37.2886433617,
+        "longitude": 127.1071926132,
+        "east_m": -3.634464,
+        "north_m": -9.726361,
+        "projected_s_m": 93.4368413704,
+        "projection_error_m": 0.0,
+        "global_rddf_index": 220
+      }
+    }
+  },
+  "pending": {}
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/home/paik/morai-artifacts/localization-final-export-20261008/final-architecture.json",
+  "output": "/home/paik/mando1-5/HL-FMA-2026-Localization/docs/architecture/localization.html",
+  "specification": {
+    "sha256": "57e62e19138244cb3f6fdba83636311e64c100b315db52129ed3ab3e0adc62c5",
+    "bytes": 5433
+  },
+  "artifact": {
+    "sha256": "5a28666558261352b3ebaf9331bb64fa71d83b860e81afbcc8524dd10c20bd4a",
+    "bytes": 810247
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  },
+  "evidence": {
+    "verified": true,
+    "repository": "https://github.com/Team-Stier/HL-FMA-1-5-2026",
+    "revision": "fba9a5c12382a61a2711fe5685fe839e20c804c3",
+    "references": 11
+  }
+}

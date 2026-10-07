@@ -221,6 +221,17 @@ class HeadingCalibrationTest(unittest.TestCase):
         self.assertFalse(self.core.calibrated)
         self.assertEqual(self.core.output_orientation(q), q)
 
+    def test_rddf_heading_force_is_immediate(self):
+        self.assertTrue(self.core.observe_imu(
+            100.0, orientation(yaw=-30.0), (0.0, 0.0, 0.0), 100.0))
+
+        self.assertTrue(self.core.force_body_yaw(math.radians(20.0)))
+
+        output = self.core.step_output_orientation(
+            orientation(yaw=-30.0), 100.0)
+        self.assertAlmostEqual(
+            wrap(rpy(output)[2]-math.radians(20.0)), 0.0, places=8)
+
     def test_initial_alignment_is_world_z_rotation_with_roll_pitch_preserved(self):
         self.calibrate(roll=5., pitch=8.)
         self.assertAlmostEqual(math.degrees(self.core.offset), 70., places=7)

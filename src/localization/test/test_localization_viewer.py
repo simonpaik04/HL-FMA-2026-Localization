@@ -30,6 +30,26 @@ class ViewerTest(unittest.TestCase):
 
     def tearDown(self): self.tmp.cleanup()
 
+    def test_tracker_active_window_is_buffered_for_live_and_recorded_display(self):
+        from mando_localization.msg import RddfMatch
+        model = v.SceneData(self.root, frame_mode='rddf_map')
+        message = RddfMatch()
+        message.matched = True
+        message.source_route_name = '1_left'
+        message.active_source_route_names = ['1_left', '2']
+        message.header.stamp = rospy.Time.from_sec(100.)
+        model.ingest('rddf', message, 100., True)
+        message.source_route_name = '2'
+        message.active_source_route_names = ['2', '3_s-static-obstacle']
+        message.header.stamp = rospy.Time.from_sec(101.)
+        model.ingest('rddf', message, 101., True)
+        self.assertEqual(model.data['rddf'][0]['active_sources'], ['1_left', '2'])
+        self.assertEqual(model.data['rddf'][1]['active_sources'], ['2', '3_s-static-obstacle'])
+        message.matched = False
+        message.active_source_route_names = []
+        model.ingest('rddf', message, 101.1, True)
+        self.assertFalse(model.data['rddf'][-1]['accepted'])
+
     def test_current_rddf_projects_onto_route_and_rejects_far_position(self):
         from rddf_initialization_core import RddfRouteMap
         routes = RddfRouteMap(self.root)
@@ -68,6 +88,29 @@ class ViewerTest(unittest.TestCase):
         self.assertEqual(result['reason'], 'AMBIGUOUS_ROUTE')
         self.assertEqual(result['routes'], ['overlap', 'test'])
 
+    def test_accepted_overlap_still_requires_manual_source_route_choice(self):
+        from rddf_initialization_core import RddfRouteMap
+        (self.root/'overlap.csv').write_text(
+            (self.root/'route.csv').read_text().replace(',test,', ',overlap,'))
+        match = RddfRouteMap(self.root).match(5., 5., 5.)
+        self.assertTrue(match['accepted'])
+        self.assertEqual(match['reason'], 'MATCHED')
+        self.assertEqual({candidate['route'] for candidate in match['candidates']},
+                         {'overlap', 'test'})
+        self.assertTrue(v.manual_candidate_menu_required(match))
+
+    def test_manual_candidate_menu_preserves_ambiguous_direction_choice(self):
+        self.assertTrue(v.manual_candidate_menu_required({
+            'accepted': False,
+            'reason': 'AMBIGUOUS_ROUTE',
+            'candidates': [{'route': 'test'}, {'route': 'test'}],
+        }))
+        self.assertFalse(v.manual_candidate_menu_required({
+            'accepted': True,
+            'reason': 'MATCHED',
+            'candidates': [{'route': 'test'}, {'route': 'test'}],
+        }))
+
     @staticmethod
     def odom(x,y,yaw):
         msg=Odometry();msg.pose.pose.position.x=x;msg.pose.pose.position.y=y
@@ -91,44 +134,6 @@ class ViewerTest(unittest.TestCase):
             'Calibrated yaw 15.0° | Local yaw 60.0° | Global yaw 이 시점 표시 없음',
             v.heading_readout(displayed, calibrated_yaw=math.radians(15)),
         )
-
-    def test_odometry_mode_displays_unmodified_poses_without_gps_or_rddf(self):
-        model = v.SceneData(self.root, frame_mode='odometry')
-        for key, message in [('local', self.local), ('global', self.glob)]:
-            model.ingest(key, message, 100., True)
-        self.assertFalse(model.routes)
-        self.assertFalse(model.data['gps'])
-        np.testing.assert_allclose(model.shift, [0., 0.])
-        np.testing.assert_allclose(model.points('local')[0], [4., 6., math.radians(60.)])
-        np.testing.assert_allclose(model.points('global')[0], [7., 8., math.radians(-20.)])
-        self.assertEqual(model.summary['additional_viewer_yaw_rotation_rad'], 0.)
-        self.assertEqual(model.summary['frame_mode'], 'odometry')
-        displayed = {key: model.points(key)[0] for key in ('local', 'global')}
-        self.assertEqual(v.heading_readout(displayed, calibrated_yaw=math.radians(15.)),
-                         'Calibrated yaw 15.0° | Local yaw 60.0° | Global yaw -20.0°')
-
-    def test_odometry_view_fits_observed_positions_with_minimum_stationary_extent(self):
-        model = v.SceneData(self.root, frame_mode='odometry')
-        center, span = model.view_bounds()
-        np.testing.assert_allclose(center, [0., 0.])
-        np.testing.assert_allclose(span, [20., 20.])
-        model.ingest('local', self.local, 100., True)
-        model.ingest('global', self.glob, 100., True)
-        center, span = model.view_bounds()
-        np.testing.assert_allclose(center, [5.5, 7.])
-        np.testing.assert_allclose(span, [20., 20.])
-        model.ingest('global', self.odom(47., 8., 0.), 101., True)
-        center, span = model.view_bounds()
-        np.testing.assert_allclose(center, [25.5, 7.])
-        np.testing.assert_allclose(span, [43., 20.])
-
-    def test_odometry_rewind_keeps_zero_translation_without_waiting_for_gps(self):
-        model = v.SceneData(self.root, frame_mode='odometry')
-        model.ingest('local', self.local, 100., True)
-        model.ingest('local', self.glob, 90., True)
-        self.assertEqual(model.summary['clock_resets'], 1)
-        np.testing.assert_allclose(model.shift, [0., 0.])
-        np.testing.assert_allclose(model.points('local')[0], [7., 8., math.radians(-20.)])
 
     def test_live_recorded_same_input_same_result(self):
         live=v.SceneData(self.root)

@@ -34,15 +34,25 @@ StateDecision LocalizationStateEvaluator::evaluate(const StateInput& input) cons
     return {LocalizationState::FAULT, false, "global_output_invalid"};
   }
 
+  if (!input.anchor_seen) {
+    return {LocalizationState::INITIALIZING, false, "waiting_for_absolute_anchor"};
+  }
+
+  // GPS-disabled operation deliberately has no continuing absolute source.
+  // A committed manual/RDDF anchor plus healthy local motion and Global EKF is
+  // therefore the complete contract for inertial/encoder dead reckoning.
+  // The bounded outage budget below still applies when an absolute source was
+  // configured and subsequently became unhealthy.
+  if (input.absolute_enabled_count == 0U) {
+    return {LocalizationState::DEAD_RECKONING, true,
+            "manual_anchor_inertial_odometry"};
+  }
+
   if (input.absolute_healthy_count > 0U) {
     if (input.absolute_healthy_count < input.absolute_enabled_count) {
       return {LocalizationState::DEGRADED, true, "absolute_source_degraded"};
     }
     return {LocalizationState::TRACKING, true, "all_enabled_sources_healthy"};
-  }
-
-  if (!input.anchor_seen || input.absolute_enabled_count == 0U) {
-    return {LocalizationState::INITIALIZING, false, "waiting_for_absolute_anchor"};
   }
 
   if (input.seconds_since_absolute <= policy_.dead_reckoning_max_sec &&

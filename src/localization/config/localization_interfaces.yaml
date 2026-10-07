@@ -37,6 +37,7 @@ topics:
   gps_map_pose: /molit/localization/gps/map_pose
   global_odometry: /molit/localization/global/odometry
   current_rddf: /molit/localization/rddf/current
+  rddf_successor_request: /mission/rddf_successor
   output_odometry: /molit/localization/odometry
   path: /molit/localization/path
   markers: /molit/localization/markers
@@ -90,6 +91,7 @@ message_types:
   absolute_pose: geometry_msgs/PoseWithCovarianceStamped
   gps_gate_reanchor: mando_localization/GpsGateReanchor
   current_rddf: mando_localization/RddfMatch
+  rddf_successor_request: std_msgs/String
   status: diagnostic_msgs/DiagnosticArray
 
 contracts:

@@ -256,6 +256,22 @@ class HeadingCalibration:
         self.initial_heading = dict(yaw_rad=wrap(yaw_rad), standard_deviation_deg=standard_deviation_deg, source=source)
         return self.initialize_heading(mount)
 
+    def force_body_yaw(self, yaw_rad, mount=(0., 0., 0., 1.)):
+        """Immediately align calibrated body yaw to an RDDF tangent."""
+        if not self.imus:
+            return False
+        stamp, q, _ = self.imus[-1]
+        body_yaw = rpy(multiply(q, inverse(quaternion(mount))))[2]
+        self.offset = wrap(yaw_rad-body_yaw)
+        self.applied_offset = self.offset
+        self.initialized = True
+        if self.initialization_stamp is None:
+            self.initialization_stamp = stamp
+        self.window.clear()
+        self.reason = 'RDDF_HEADING_FORCED'
+        self.correction_count += 1
+        return True
+
     def observe_time(self, now):
         """ROS clock rollback starts a new bag/session; reordered sensors do not reset it."""
         if not math.isfinite(now) or now <= 0:

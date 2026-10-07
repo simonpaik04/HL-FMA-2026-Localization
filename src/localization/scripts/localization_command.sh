@@ -28,7 +28,7 @@ if [[ -r "${GPS_DEVICE}" && -w "${GPS_DEVICE}" ]]; then
   rospack find ublox_gps >/dev/null 2>&1 || \
     fail "ublox_gps가 작업공간에 없습니다. 작업공간을 다시 빌드하세요."
 else
-  echo "[localization] GPS: 입력 없음 (${GPS_DEVICE})"
+  echo "[localization] GPS: 입력 없음 (${GPS_DEVICE}); 수동 RDDF 초기위치 + IMU/엔코더 모드"
 fi
 
 ENCODER_ARG=false
@@ -86,6 +86,7 @@ exec roslaunch mando_localization map_data_collection.launch \
   start_encoder_driver:="${ENCODER_ARG}" \
   start_imu_driver:="${IMU_ARG}" \
   start_gps_driver:="${GPS_ARG}" \
+  enable_gps_fusion:="${GPS_ARG}" \
   start_lidar_driver:="${LIDAR_ARG}" \
   start_rviz:=true \
   lidar_serial_port:="${LIDAR_DEVICE}" \

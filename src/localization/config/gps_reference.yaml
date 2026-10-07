@@ -42,8 +42,8 @@ quality:
   fallback_vertical_variance_m2: 100.0
   max_horizontal_variance_m2: 25.0
   max_vertical_variance_m2: 100.0
-  max_step_distance_m: 50.0
+  max_step_distance_m: 30.0
   unobserved_variance: 1000000.0
-  max_position_innovation_m: 10.0
-  max_mahalanobis_distance: 5.0
+  max_position_innovation_m: 30.0
+  max_mahalanobis_distance: 20.0
   max_reanchor_candidate_distance_m: 2.0

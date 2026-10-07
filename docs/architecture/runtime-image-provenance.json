@@ -1,0 +1,10 @@
+{
+  "kind": "existing-rosbag-replay-evidence",
+  "capture_date": "2026-09-14",
+  "source_bag_recording": "20260906_123929",
+  "runtime_screenshot": "assets/localization-rosbag-replay.png",
+  "screenshot_source": "/home/paik/mando1-5/Rosbag/rddf_display_check_20260914/current_after_refresh_fix.png",
+  "screenshot_sha256": "725fbb78b75b0d645d835b8cf6050af7cabe2e95a6aa6567610cd78ebfb50416",
+  "note": "2026-09-14 ROS1 mando_localization의 실제 과거 재생 화면. 이번 최종 commit의 새 실행 캡처가 아니며 측량 ground truth 위치 정확도 검증이 아님.",
+  "current_source_revision": "fba9a5c12382a61a2711fe5685fe839e20c804c3"
+}

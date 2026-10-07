@@ -30,12 +30,15 @@ class RddfInitializer:
         root = Path(rospy.get_param('~package_directory'))
         directory = Path(self.p['rddf_directory'])
         self.routes = RddfRouteMap(directory if directory.is_absolute() else root/directory)
+        self.gps_route_name = self.p.get('gps_route_name')
+        if self.gps_route_name is not None and self.gps_route_name not in self.routes.routes:
+            raise ValueError('initialization/gps_route_name references an unknown route')
         reference = rospy.get_param('~reference')
         if (abs(reference['latitude_deg']-self.routes.origin['lat']) > 1e-10 or
                 abs(reference['longitude_deg']-self.routes.origin['lng']) > 1e-10):
             raise ValueError('RDDF origin and GPS datum differ')
         for k,v in self.p.items():
-            if k != 'rddf_directory' and (isinstance(v,bool) or not isinstance(v,(int,float)) or
+            if k not in ('rddf_directory', 'gps_route_name') and (isinstance(v,bool) or not isinstance(v,(int,float)) or
                                          not math.isfinite(v) or v <= 0):
                 raise ValueError('invalid initialization/'+k)
         self.lever = rospy.get_param('~lever_arm')
@@ -92,8 +95,8 @@ class RddfInitializer:
             self.last_now = now
             if self.started is not None and not self.ready and self.state != 'FAULT':
                 if time.monotonic()-self.started > self.p['confirmation_timeout_sec']:
-                    self.state,self.reason = 'FAULT','초기화 확인 시간 초과: 출력 차단'
-                    self.epoch += 1
+                    if self.confirm_after is not None:
+                        self.reason = 'Local/Global 위치·yaw 확인 대기 (지연 중)'
             self.publish()
 
     def speed_callback(self,m):
@@ -118,7 +121,12 @@ class RddfInitializer:
 
     def manual_active_callback(self,m):
         with self.lock:
-            if self.ready or self.started is not None: return
+            if bool(m.data) and self.ready:
+                self.ready = False
+                self.selected = self.started = self.confirm_after = None
+                self.confirm = {'local': [], 'global': []}
+            elif self.started is not None:
+                return
             self.manual=bool(m.data); self.gps_candidates.clear()
             self.state='WAITING_FOR_MANUAL' if self.manual else 'WAITING_FOR_GPS'
             self.reason='RDDF 위에 포인터를 놓고 클릭' if self.manual else 'GPS 대기'
@@ -144,7 +152,7 @@ class RddfInitializer:
                 if not valid: raise ValueError('GPS 품질 또는 측정 시각 확인 대기')
                 self.last_gps_stamp=stamp
                 x,y=self.routes.project_gps(m.latitude,m.longitude)
-                candidate=self.match(x,y)
+                candidate=self.match(x,y,self.gps_route_name)
                 if candidate['accepted']:
                     yaw=candidate['yaw'];lx,ly=self.lever['x_m'],self.lever['y_m']
                     candidate=self.match(x-math.cos(yaw)*lx+math.sin(yaw)*ly,
@@ -191,7 +199,7 @@ class RddfInitializer:
         return m
 
     def begin(self,candidate,now):
-        if not self.stationary(now):
+        if candidate.get('source') != 'MANUAL_RDDF' and not self.stationary(now):
             self.state,self.reason='WAITING_FOR_STATIONARY','fresh 엔코더 정지 확인 대기';return
         self.selected=dict(candidate);self.started=time.monotonic();self.state='INITIALIZING';self.reason='IMU와 Local/Global 초기화'
         self.transaction+=1;epoch=self.epoch;transaction=self.transaction
@@ -199,7 +207,6 @@ class RddfInitializer:
         threading.Thread(target=self.initialize,args=(dict(candidate),epoch,transaction),daemon=True).start()
 
     def initialize(self,target,epoch,transaction):
-        worker_started = time.monotonic()
         try:
             heading_name=rospy.get_param('~heading_service','/calibrated_imu/set_initial_heading')
             local_name=rospy.get_param('~services/local_ekf_set_pose')
@@ -208,28 +215,38 @@ class RddfInitializer:
             for service in (heading_name,local_name,global_name):
                 while True:
                     with self.lock:
-                        if epoch!=self.epoch or self.state=='FAULT':raise ValueError('초기화 시간 초과')
+                        if epoch!=self.epoch or self.state=='FAULT':return
                     try:
                         rospy.wait_for_service(service,timeout=self.p['service_wait_sec']);break
                     except rospy.ROSException:
-                        if time.monotonic()-worker_started>=self.p['confirmation_timeout_sec']:raise
+                        if rospy.is_shutdown():return
+                        with self.lock:
+                            if epoch!=self.epoch:return
+                            self.reason='초기화 서비스 준비 대기: '+service
 
             with self.lock:
-                if epoch!=self.epoch or not self.stationary(rospy.Time.now().to_sec()):raise ValueError('초기화 전 차량 상태 변경')
+                if (epoch!=self.epoch or
+                        target.get('source') != 'MANUAL_RDDF' and not self.stationary(rospy.Time.now().to_sec())):
+                    raise ValueError('초기화 전 차량 상태 변경')
             while True:
                 with self.lock:
-                    if epoch!=self.epoch or self.state=='FAULT' or not self.stationary(rospy.Time.now().to_sec()):
+                    if (epoch!=self.epoch or self.state=='FAULT' or
+                            target.get('source') != 'MANUAL_RDDF' and not self.stationary(rospy.Time.now().to_sec())):
                         raise ValueError('초기화 대기 중 정지/시간 조건 변경')
                 result=rospy.ServiceProxy(heading_name,SetInitialHeading)(transaction,target['yaw'],target['source']+':'+target['route']+':'+str(target['index']),self.p['heading_standard_deviation_deg'])
                 if result.accepted:break
                 if result.reason!='WAITING_FOR_FRESH_IMU':raise ValueError(result.reason)
                 with self.lock:self.state,self.reason='WAITING_FOR_IMU','fresh IMU와 장착 TF 대기'
                 time.sleep(.03)
-            with self.lock:self.state='INITIALIZING'
+            with self.lock:
+                if epoch!=self.epoch:return
+                self.state='INITIALIZING'
 
             for name,frame in ((local_name,self.frames['odom']),(global_name,self.frames['map'])):
                 with self.lock:
-                    if epoch!=self.epoch or not self.stationary(rospy.Time.now().to_sec()):raise ValueError('초기화 중 차량 상태 변경')
+                    if (epoch!=self.epoch or
+                            target.get('source') != 'MANUAL_RDDF' and not self.stationary(rospy.Time.now().to_sec())):
+                        raise ValueError('초기화 중 차량 상태 변경')
                 rospy.ServiceProxy(name,SetPose)(self.pose(target,rospy.Time.now(),frame))
             with self.lock:
                 if epoch!=self.epoch:return
@@ -242,7 +259,8 @@ class RddfInitializer:
         with self.lock:
             if self.confirm_after is None or self.ready or self.state=='FAULT':return
             now=rospy.Time.now().to_sec();stamp=m.header.stamp.to_sec()
-            if not self.stationary(now):self.state,self.reason='FAULT','초기화 확인 중 차량 이동';return
+            if self.selected.get('source') != 'MANUAL_RDDF' and not self.stationary(now):
+                self.state,self.reason='FAULT','초기화 확인 중 차량 이동';return
             q=m.pose.pose.orientation;p=m.pose.pose.position
             values=[p.x,p.y,p.z,q.x,q.y,q.z,q.w]+list(m.pose.covariance)
             norm=q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w

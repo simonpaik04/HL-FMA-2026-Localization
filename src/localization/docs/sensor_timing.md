@@ -1,5 +1,8 @@
 # 센서 시각과 지연 GPS 처리
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 GPS는 **GNSS UTC 측정 시각**으로 융합하고 PC 수신 시각을 별도로 기록한다.
 PC 시계 상태를 검사한 뒤 GPS 측정 시각의 Local Odometry를 보간하고,
 Global EKF가 과거 측정을 반영해 현재 시각까지 예측한다.
@@ -19,14 +22,14 @@ root distance 50ms 이하, 최신 표본 3600초 이내다. 실제 허용 위치
 source /opt/ros/noetic/setup.bash
 source ~/work/HL-FMA-2026-Localization/devel/setup.bash
 rosrun mando_localization check_time_sync.py \
-  --config ~/work/HL-FMA-2026-Localization/src/mando_localization/config/time_sync.yaml
+  --config ~/work/HL-FMA-2026-Localization/src/localization/config/time_sync.yaml
 ```
 
 `sensors.launch`는 GPS 프로세스를 실행하기 전에 같은 검사를 실행한다.
 검사 실패 시 GPS 드라이버를 실행하지 않는다. `localization-record`는 검사 결과를
 세션의 `time_sync_preflight.json`에도 저장한다.
 운행 중 monitor가 5초마다 호스트를 검사하고 1Hz `clock_ready` heartbeat를 보낸다.
-검사 실패·검사 지연·heartbeat 누락은 GPS 및 reanchor 승인을 차단한다.
+최종 기본값은 `enforce_host_clock_ready: false`여서 호스트 검사 실패·지연으로 readiness를 false로 만들지 않는다. 이 옵션을 true로 설정한 경우에만 호스트 검사 결과를 readiness에 반영한다. heartbeat 자체의 누락은 GPS 및 reanchor 승인을 차단한다.
 GPS gate의 heartbeat 한계는 3초이며 경과 시간은 단조 증가 시계로 잰다.
 
 `use_sim_time=true`인 재생은 `REPLAY_UNVERIFIED`로 명시한다. 이 경우의 readiness는
@@ -114,8 +117,7 @@ source /opt/ros/noetic/setup.bash
 source devel/setup.bash
 catkin_make -DPYTHON_EXECUTABLE=/usr/bin/python3 -j2
 catkin_make -j4 -l4 run_tests_mando_localization
-# 수정 ublox_gps 소스를 별도로 빌드한 workspace에서만:
-# catkin_make -j2 run_tests_ublox_gps
+# 수정 ublox_gps 소스를 별도 포함한 workspace에서만 해당 패키지 테스트를 실행합니다.
 catkin_test_results build/test_results
 ```
 

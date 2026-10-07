@@ -2,7 +2,8 @@
 clock_preflight:
   backend: auto
   command_timeout_sec: 2.0
-  max_abs_offset_sec: 0.05
+  # 현장 통합 시험 요청값. PC 시각과 NTP 추정 시각의 차이를 최대 3초까지 허용한다.
+  max_abs_offset_sec: 3.0
   max_root_distance_sec: 0.05
   # timesyncd의 현재 최대 poll 2048초를 수용하는 잠정 운영 기준이다.
   max_sample_age_sec: 3600.0
@@ -13,6 +14,8 @@ clock_preflight:
 
 gps_driver_timing_topic: /mando_localization/internal/driver/gps_timing
 sensor_timing_monitor:
+  # PC NTP 검사는 진단에 남기되, 운행 중 GPS/IMU/RDDF를 차단하지 않는다.
+  enforce_host_clock_ready: false
   publish_rate_hz: 1.0
   host_check_period_sec: 5.0
   host_check_stale_sec: 15.0

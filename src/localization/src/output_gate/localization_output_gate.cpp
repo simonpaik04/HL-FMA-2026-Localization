@@ -47,6 +47,8 @@ LocalizationOutputGate::LocalizationOutputGate(ros::NodeHandle nh, ros::NodeHand
       private_nh_, "output_gate/require_map_frame");
   const bool publish_last_pose_when_invalid = requireParameter<bool>(
       private_nh_, "output_gate/publish_last_pose_when_invalid");
+  private_nh_.param("output_gate/allow_unbounded_position_variance",
+                    allow_unbounded_position_variance_, false);
   private_nh_.param("initialization/required", initialization_required_, false);
   private_nh_.param("initialization/ready_timeout_sec",
                     initialization_ready_timeout_sec_, 0.5);
@@ -174,7 +176,10 @@ void LocalizationOutputGate::odometryCallback(const nav_msgs::OdometryConstPtr& 
   }
   if (!validateOdometry(*message, map_frame_, base_frame_, now,
                         max_odometry_age_sec_, max_future_stamp_sec_,
-                        max_position_variance_m2_, max_quaternion_error_,
+                        allow_unbounded_position_variance_
+                            ? max_covariance_diagonal_
+                            : max_position_variance_m2_,
+                        max_quaternion_error_,
                         max_covariance_diagonal_)) {
     ROS_ERROR_THROTTLE(2.0, "LocalizationOutputGate: Global Odometry 계약 위반입니다.");
     return;

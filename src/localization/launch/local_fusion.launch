@@ -23,14 +23,14 @@
   <rosparam command="load" file="$(arg interfaces_config)" ns="/mando_localization/interfaces"/>
 
   <group if="$(arg start_interface_adapter)">
-    <node pkg="mando_localization" type="localization_interface_adapter_node"
+    <node respawn="true" respawn_delay="3.0" pkg="mando_localization" type="localization_interface_adapter_node"
           name="$(arg interface_adapter_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg interfaces_config)"/>
     </node>
   </group>
 
   <group if="$(arg start_imu_normalizer)">
-    <node pkg="mando_localization" type="imu_normalizer_node"
+    <node respawn="true" respawn_delay="3.0" pkg="mando_localization" type="imu_normalizer_node"
           name="$(arg imu_normalizer_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg interfaces_config)"/>
       <rosparam command="load" file="$(arg imu_driver_config)"/>
@@ -39,7 +39,7 @@
 
   <!-- 외부 normalized IMU 입력도 같은 보정 단계를 거친다. -->
   <group if="$(arg start_calibrated_imu)">
-    <node pkg="mando_localization" type="calibrated_imu_node.py"
+    <node respawn="true" respawn_delay="3.0" pkg="mando_localization" type="calibrated_imu_node.py"
           name="$(arg calibrated_imu_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg interfaces_config)"/>
       <rosparam command="load" file="$(arg imu_heading_config)"/>
@@ -49,7 +49,7 @@
   </group>
 
   <group if="$(eval arg('motion_source') == 'encoder')">
-    <node pkg="mando_localization" type="encoder_to_twist_adapter_node"
+    <node respawn="true" respawn_delay="3.0" pkg="mando_localization" type="encoder_to_twist_adapter_node"
           name="$(arg encoder_adapter_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg interfaces_config)"/>
       <rosparam command="load" file="$(arg encoder_config)"/>
@@ -57,7 +57,7 @@
   </group>
 
   <group if="$(arg start_local_ekf)">
-    <node pkg="robot_localization" type="ekf_localization_node"
+    <node respawn="true" respawn_delay="3.0" pkg="robot_localization" type="ekf_localization_node"
           name="$(arg local_ekf_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg local_ekf_config)"/>
       <rosparam if="$(arg initialize_heading)" command="load" file="$(arg initial_heading_config)"/>

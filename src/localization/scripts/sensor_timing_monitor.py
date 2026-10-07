@@ -29,6 +29,7 @@ class SensorTimingMonitor:
     def __init__(self):
         self.policy = rospy.get_param('~sensor_timing_monitor')
         self.clock_policy = rospy.get_param('~clock_preflight')
+        self.enforce_host_clock_ready = bool(self.policy.get('enforce_host_clock_ready', True))
         self.sim = bool(rospy.get_param('/use_sim_time', False))
         self.gps_receipt_mode = bool(rospy.get_param('~gps_driver/use_ros_time', False))
         for key in ('publish_rate_hz', 'host_check_period_sec', 'host_check_stale_sec',
@@ -182,7 +183,7 @@ class SensorTimingMonitor:
             status = [status_message('sensor_timing/host_clock', level, host['status'], host)]
             status.extend(self._sensor_status(name, now) for name in self.windows)
             status.append(self._driver_status(now))
-        self.clock_ready.publish(Bool(data=ready))
+        self.clock_ready.publish(Bool(data=ready or not self.enforce_host_clock_ready))
         array = DiagnosticArray()
         array.header.stamp = rospy.Time.now()
         array.status = status

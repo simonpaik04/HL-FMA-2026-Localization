@@ -1,5 +1,8 @@
 # GPS 품질, covariance와 재연결 판단
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 이 문서는 `sensor_msgs/NavSatFix`가 들어온 뒤 GPS gate, 장기 단절 복구,
 Global EKF까지 이어지는 현재 구현 계약을 설명합니다. 설정 수치는 수신기의 실제
 정확도 측정값이 아니라 메시지를 사용할지 결정하는 한계값입니다.
@@ -59,11 +62,11 @@ GPS gate는 직전 승인 GPS와 그 측정 시각의 Local Odometry를 anchor�
 clock_ready와 이력 정합 조건은 [센서 시각 문서](sensor_timing.md)를 참고합니다.
 
 ```text
-Euclidean innovation <= 10.0 m
-Mahalanobis distance <= 5.0
+Euclidean innovation <= 30.0 m
+Mahalanobis distance <= 20.0
 ```
 
-여기서 `10.0 m`는 현재 GPS와 Local의 거리가 항상 10 m라는 뜻이 아니라
+여기서 `30.0 m`는 현재 GPS와 Local의 거리가 항상 30 m라는 뜻이 아니라
 `quality.max_position_innovation_m`의 거부 경계입니다. 실제 innovation은 GPS
 후보마다 달라집니다. 짧은 구간에서는 Local Odometry가 연속 움직임을 잘
 표현하므로 점프·오측정을 거르는 기준으로 사용하지만, 단절이 길어져 drift가
@@ -124,7 +127,7 @@ yaw·Z·나머지 covariance 보존 결과까지 검증하는 것은 아닙니�
 ## 현재 기본값에서의 결과
 
 - GPS-only automatic reset: `false`
-- GPS 설정 자체의 datum: `first_fix`, `measured: false`. 기본 RDDF 초기화 실행은 `rddf_initialization.yaml`의 `rddf_datum`, `measured: false`를 사용합니다.
+- GPS YAML 자체: `first_fix`, `measured: false`. 기본 RDDF 초기화는 `rddf_datum`, `measured: false`를 사용합니다.
 
 따라서 지도 없는 `localization` 기본 실행은 장기 단절 후 임의 위치 점프를 하지 않습니다. 단기
 gate로 안전하게 복귀하지 못하면 복구 상태를 유지하고 최종 위치를 차단합니다.

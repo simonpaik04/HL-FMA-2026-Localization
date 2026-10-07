@@ -6,7 +6,7 @@
   <arg name="initial_heading_config" default="$(find mando_localization)/config/initial_heading.yaml"/>
 
   <group if="$(arg start_global_ekf)">
-    <node pkg="robot_localization" type="ekf_localization_node"
+    <node respawn="true" respawn_delay="3.0" pkg="robot_localization" type="ekf_localization_node"
           name="$(arg global_ekf_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg global_ekf_config)"/>
       <rosparam if="$(arg initialize_heading)" command="load" file="$(arg initial_heading_config)"/>

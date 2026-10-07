@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.0.2)
+project(planning_interfaces)
+find_package(catkin REQUIRED COMPONENTS message_generation std_msgs nav_msgs geometry_msgs)
+add_message_files(FILES Route.msg RouteMap.msg MissionState.msg PlannedPath.msg PathStatus.msg SafetyStatus.msg SignalObservation.msg LaneSignals.msg ParkingManeuver.msg TrafficConstraint.msg)
+add_service_files(FILES SetLandmarkTarget.srv)
+generate_messages(DEPENDENCIES std_msgs nav_msgs geometry_msgs)
+catkin_package(CATKIN_DEPENDS message_runtime std_msgs nav_msgs geometry_msgs)

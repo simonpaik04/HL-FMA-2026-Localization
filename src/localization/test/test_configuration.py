@@ -40,6 +40,9 @@ class ConfigurationContractTest(unittest.TestCase):
         fields = [line for line in lines if line]
         self.assertEqual(
             [
+                "uint8 GEAR_FORWARD=0",
+                "uint8 GEAR_NEUTRAL=1",
+                "uint8 GEAR_REVERSE=2",
                 "uint8 MorA",
                 "uint8 EStop",
                 "uint8 Gear",
@@ -57,7 +60,19 @@ class ConfigurationContractTest(unittest.TestCase):
             for line in drive_path.read_text(encoding="utf-8").splitlines()
             if line.split("#", 1)[0].strip()
         ]
-        self.assertEqual(["uint16 KPH", "int16 Deg", "uint8 brake"], drive_fields)
+        self.assertEqual(
+            [
+                "uint8 GEAR_FORWARD=0",
+                "uint8 GEAR_NEUTRAL=1",
+                "uint8 GEAR_REVERSE=2",
+                "uint16 KPH",
+                "int16 Deg",
+                "uint8 brake",
+                "uint8 Gear",
+                "uint8 EStop",
+            ],
+            drive_fields,
+        )
 
     def test_encoder_rosserial_driver_is_wired_to_the_connected_uno(self):
         driver = load_yaml("encoder_driver.yaml")
@@ -230,7 +245,7 @@ class ConfigurationContractTest(unittest.TestCase):
     def test_measured_imu_identity_and_fail_closed_covariance(self):
         imu = load_yaml("imu_driver.yaml")
         self.assertEqual("/dev/imu", imu["port"])
-        self.assertEqual("03889250", imu["device_id"])
+        self.assertEqual("0388BD48", imu["device_id"])
         self.assertEqual(115200, imu["baudrate"])
         self.assertTrue(imu["covariance_override"]["enabled"])
         self.assertEqual("measured", imu["covariance_override"]["calibration_state"])
@@ -289,6 +304,9 @@ class ConfigurationContractTest(unittest.TestCase):
             2.0,
             gps_reference["quality"]["max_reanchor_candidate_distance_m"],
         )
+        self.assertEqual(30.0, gps_reference["quality"]["max_step_distance_m"])
+        self.assertEqual(30.0,
+                         gps_reference["quality"]["max_position_innovation_m"])
         lever_arm = gps_reference["lever_arm"]
         self.assertNotIn("enabled", lever_arm)
         self.assertEqual(0.65, lever_arm["x_m"])
@@ -299,8 +317,12 @@ class ConfigurationContractTest(unittest.TestCase):
 
     def test_dead_reckoning_is_bounded(self):
         policy = load_yaml("status_policy.yaml")
-        self.assertEqual(2.0, policy["dead_reckoning"]["max_duration_sec"])
-        self.assertEqual(10.0, policy["dead_reckoning"]["max_distance_m"])
+        self.assertEqual(
+            30.0,
+            policy["absolute_sources"]["max_global_consistency_distance_m"],
+        )
+        self.assertEqual(200.0, policy["dead_reckoning"]["max_duration_sec"])
+        self.assertEqual(1000.0, policy["dead_reckoning"]["max_distance_m"])
         self.assertEqual("first_exceeded", policy["dead_reckoning"]["limit_policy"])
         self.assertFalse(policy["output_gate"]["publish_last_pose_when_invalid"])
 
@@ -325,6 +347,8 @@ class ConfigurationContractTest(unittest.TestCase):
         self.assertIn('name="start_supervisor"', safety)
         self.assertIn('if="$(arg start_supervisor)"', safety)
         self.assertIn("relocalization_policy_config", safety)
+        self.assertIn("output_gate/allow_unbounded_position_variance", safety)
+        self.assertIn("not arg('enable_gps_fusion')", safety)
         self.assertNotIn('type="localization_status_manager_node"', safety)
         self.assertIn("/mando_localization/internal/ekf/local_set_pose", local)
         self.assertIn("/mando_localization/internal/ekf/global_set_pose", global_fusion)
@@ -352,6 +376,7 @@ class ConfigurationContractTest(unittest.TestCase):
             "roslaunch mando_localization map_data_collection.launch", command
         )
         self.assertIn("start_lidar_driver", command)
+        self.assertIn('enable_gps_fusion:="${GPS_ARG}"', command)
         self.assertIn("start_rviz:=true", command)
         self.assertIn("start_recording:=false", command)
         self.assertGreater(
@@ -378,6 +403,7 @@ class ConfigurationContractTest(unittest.TestCase):
             for item in collection.findall("arg")
         }
         self.assertEqual("true", arguments["start_lidar_driver"])
+        self.assertEqual("$(arg start_gps_driver)", arguments["enable_gps_fusion"])
         self.assertEqual("true", arguments["start_recording"])
         self.assertEqual("/dev/lidar", arguments["lidar_serial_port"])
         self.assertEqual("laser_link", arguments["lidar_frame_id"])
@@ -403,6 +429,7 @@ class ConfigurationContractTest(unittest.TestCase):
             for item in bringup.findall("arg")
         }
         self.assertEqual("true", included_args["start_static_tf_publisher"])
+        self.assertEqual("$(arg enable_gps_fusion)", included_args["enable_gps_fusion"])
         self.assertEqual("$(arg rviz_config)", included_args["rviz_config"])
 
         visualization = ET.parse(PACKAGE / "launch" / "visualization.launch").getroot()
@@ -533,7 +560,7 @@ class ConfigurationContractTest(unittest.TestCase):
             "STATUS_SBAS_FIX",
             "STATUS_GBAS_FIX",
             "COVARIANCE_TYPE_UNKNOWN",
-            "10.0 m",
+            "30.0 m",
             "GpsGateReanchor",
             "transaction_id",
             "automatic_reset_enabled: false",

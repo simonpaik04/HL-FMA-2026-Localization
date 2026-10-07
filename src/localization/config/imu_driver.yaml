@@ -1,7 +1,7 @@
-# xsens_mti_driver 파라미터. Xsens DB8GG04M은 udev에서 /dev/imu로 고정한다.
+# xsens_mti_driver 파라미터. Xsens DBBE3VMC는 udev에서 /dev/imu로 고정한다.
 port: /dev/imu
-# 2026-08-30 실제 MTi-3 자동 탐색 결과: device ID 03889250, 115200 baud.
-device_id: "03889250"
+# 2026-09-16 현재 연결된 MTi-3 확인 결과: device ID 0388BD48, 115200 baud.
+device_id: "0388BD48"
 baudrate: 115200
 frame_id: imu_link
 publisher_queue_size: 10
@@ -34,8 +34,8 @@ pub_positionLLA: false
 pub_velocity: false
 
 hardware:
-  usb_serial: DB8GG04M
-  calibration_state: unverified
+  usb_serial: DBBE3VMC
+  calibration_state: connected_unverified
 
 # 2026-08-31 정지 10분 bag의 첫 60초를 제외한 539.668초 구간에서 계산한
 # sample stddev다. 정지 noise floor일 뿐 모터·진동·자기장·절대 yaw 정확도를

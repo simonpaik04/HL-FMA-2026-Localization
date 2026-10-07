@@ -11,17 +11,20 @@
   <arg name="gps_driver_config" default="$(find mando_localization)/config/gps_driver.yaml"/>
   <arg name="sensor_timing_monitor_node_name" default="sensor_timing_monitor"/>
 
+  <!-- Host clock readiness is also required by manual RDDF initialization and
+       CalibratedIMU when GPS fusion is disabled. GPS diagnostics may report an
+       absent stream, but that does not change the host-clock readiness value. -->
+  <node respawn="true" respawn_delay="3.0" if="$(arg start_sensor_timing_monitor)" pkg="mando_localization" type="sensor_timing_monitor.py"
+        name="$(arg sensor_timing_monitor_node_name)" output="screen" clear_params="true">
+    <rosparam command="load" file="$(arg interfaces_config)"/>
+    <rosparam command="load" file="$(arg time_sync_config)"/>
+    <rosparam command="load" file="$(arg gps_driver_config)" ns="gps_driver"/>
+    <param name="gps_driver_timing_topic" value="/mando_localization/internal/driver/gps_timing"/>
+    <remap from="~diagnostics" to="/mando_localization/internal/timing/diagnostics"/>
+  </node>
+
   <group if="$(arg enable_gps_fusion)">
-    <!-- /clock 재생은 monitor에서 REPLAY_UNVERIFIED로 구분한다. -->
-    <node if="$(arg start_sensor_timing_monitor)" pkg="mando_localization" type="sensor_timing_monitor.py"
-          name="$(arg sensor_timing_monitor_node_name)" output="screen" clear_params="true">
-      <rosparam command="load" file="$(arg interfaces_config)"/>
-      <rosparam command="load" file="$(arg time_sync_config)"/>
-      <rosparam command="load" file="$(arg gps_driver_config)" ns="gps_driver"/>
-      <param name="gps_driver_timing_topic" value="/mando_localization/internal/driver/gps_timing"/>
-      <remap from="~diagnostics" to="/mando_localization/internal/timing/diagnostics"/>
-    </node>
-    <node pkg="mando_localization" type="odometry_gps_fusion_node"
+    <node respawn="true" respawn_delay="3.0" pkg="mando_localization" type="odometry_gps_fusion_node"
           name="$(arg gps_quality_gate_node_name)" output="screen" clear_params="true">
       <rosparam command="load" file="$(arg interfaces_config)"/>
       <rosparam command="load" file="$(arg gps_reference_config)"/>

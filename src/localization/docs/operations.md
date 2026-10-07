@@ -1,6 +1,8 @@
-# 현장 운영 참고
+# mando_localization
 
-현재 설치·빠른 시작은 [프로젝트 README](../../../README.md)를 기준으로 합니다. 아래 `localization`·`localization-record`는 현장에서 사용하는 wrapper 이름이며, 이 저장소에서는 `scripts/localization_command.sh`·`scripts/localization_record_command.sh`를 직접 실행하거나 별도 alias를 설정합니다. CAN 로거 등 외부 도구 조건은 [출처·의존성](../../../docs/PROVENANCE.md)을 참고합니다.
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 
 현재 기본 시작 동작은 [GPS/RViz 기반 RDDF 초기화](rddf_startup.md)입니다. 코스 중간에서도 실제 차량을 RDDF 중심선·진행 방향에 놓고 실행합니다.
 `mando_localization`은 ROS1 Noetic 차량에서 IMU·엔코더의 연속 움직임과 GPS의 절대 위치를 두 단계 EKF로 결합하는 패키지입니다. 상태 판단과 최종 위치 출력을 분리하고, 입력이 오래되거나 계약을 위반하면 공개 Odometry를 차단하는 fail-closed 구조입니다.
@@ -11,12 +13,9 @@
 [CalibratedIMU와 yaw 보정 조건](calibrated_imu.md),
 [설정 가이드](configuration.md)를 참고하십시오.
 
-실 IMU를 연결하고 `W`로 가상 엔코더 입력을 넣는 GPS 없는 실내 테스트는
-[키보드 IMU·엔코더 테스트](keyboard_imu_test.md)를 참고하십시오.
-
 ## 공통 RViz와 로스백 재생
 
-기본 실행은 RDDF 자동·수동 초기화로 Local/Global과 보정 IMU의 초기 자세를 정합니다. 고정된 `1_right` 출발 방향 약 161.47°는 `start_rddf_initialization:=false`인 기존 실행 모드의 설정입니다. 자세한 조건은 [RDDF 초기화](rddf_startup.md)를 참고하십시오. 엔코더가 0인 동안에는 보정 IMU yaw를 유지하고 차량 Z 각속도를 0으로 만듭니다.
+기본 실행은 RDDF 위치·방향 초기화입니다. 고정 `1_right` 출발 yaw는 초기화가 비활성인 기존 모드에서 사용합니다. 정지 yaw 유지와 GNSS 반복 정합은 [최종 설정](final_configuration.md)을 참고합니다.
 
 실시간 bringup, `localization` 명령, 원본 로스백 재계산, 기록 결과 탐색은 모두
 [`localization_viewer.py`](../scripts/localization_viewer.py)와
@@ -27,7 +26,7 @@ YAML의 `rddf_directory`를 지정합니다. 상대 경로는 패키지 디렉�
 
 - 초록 Local, 빨강 Global, 보라 원시 GPS, 파랑 RDDF와 차량·LiDAR·상태·Raw/Calibrated yaw를 표시합니다.
 - 현재 Global 위치에 해당하는 RDDF를 굵은 노란색으로 강조하고 차량 옆에 경로 이름과 경로까지의 거리를 표시합니다. 가까운 경로가 겹치면 주황색 후보로 표시하며, 5 m 밖은 `off route`로 표시합니다. Global 수신이 0.5초 넘게 끊기거나 valid가 false/1초 이상 미수신이면 강조를 해제합니다. 화면 탐색 중에는 선택 시점 기준이며, 과거 평행이동 모드는 `display coordinates`로 구분합니다. 거리 기준은 `current_rddf_*` YAML 설정, 표시 결과는 `/mando_localization/visualization/debug/status`의 `current_rddf`에서 확인할 수 있습니다.
-- 현재 live `rddf_map` 모드는 입력 XY·yaw를 그대로 표시합니다. 기존 recorded 표시 모드에서는 첫 유효 GPS와 Local로 표시용 XY 이동을 정합니다. 초기 yaw를 임의로 0으로 돌리지 않습니다.
+- 첫 유효 GPS와 첫 Local 위치로 표시용 XY 이동을 한 번 정하고 Local/Global에 동일하게 적용합니다. **초기 yaw를 0으로 돌리거나 경로별로 정렬하지 않습니다.** GPS와 Local이 모두 오기 전에는 RDDF를 먼저 표시하며 기준점 대기 문구를 보여줍니다.
 - ±10초, 슬라이더, 분:초 입력, 화면 재생/정지, 배속, `최신 / 끝` 버튼을 지원합니다. 실시간 모드의 탐색은 수신한 결과 버퍼만 다시 그립니다. 센서 재생·EKF·ROS 시계를 뒤로 돌리거나 정지하지 않습니다.
 - 새 데이터는 화면 정지 중에도 수신합니다. `최신 / 끝`으로 실시간 화면에 복귀합니다. 노드를 재시작하면 실시간 버퍼가 초기화됩니다.
 - 버퍼는 토픽당 최대 200,000개, LiDAR는 최대 6,000개를 보관합니다. 오래된 표본이 삭제된 시점에는 해당 데이터가 표시되지 않습니다. 진단 JSON에 누락·버퍼 삭제 수가 기록됩니다.
@@ -94,6 +93,18 @@ RViz의 화면 정지·과거 시점 탐색은 이 공개 토픽에 영향을 �
 기존 RViz와 공통 매칭 함수를 사용하지만, 공개 토픽은 표시용 평행이동을 적용하지 않고
 RDDF 원점과 같은 **map 좌표의 Global 위치**를 사용합니다.
 
+첫 유효 위치에서는 전체 RDDF 중 위치와 차량 yaw가 맞는 구간을 활성화합니다. 이후에는
+교차로에서 다른 RDDF가 더 가까워져도 현재 원본 RDDF를 유지하며, 현재 경로와 실제로
+연결된 다음 번호 경로의 진입부에 도달했을 때만 전환합니다. 따라서 현재 RDDF의 선택·순서·
+교차점 연속성은 Localization 한 곳에서 결정하며 State Manager는 이 결과를 소비만 합니다.
+프로세스를 새로 시작하면 임의 구간에서도 최초 전역 매칭이 가능합니다.
+주차 경로를 선택하거나 기어가 바뀌는 경계(4→5, 5→6, 9→10, 10→11)는
+State Manager의 `/mission/rddf_successor` 요청에 지정된 정확한 원본 RDDF만 전환 후보로
+사용합니다. 요청 경로가 현재 RDDF의 다음 번호이고 실제 진입부에 연결된
+경우에만 활성화하며, 겹친 주차 RDDF의 기하 매칭만으로는 자동 전환하지 않습니다.
+종료 분기도 같은 요청 방식으로 검증합니다.
+최초 1번 RDDF의 좌·우가 겹치는 경우에도 같은 요청으로 지정된 시작 분기를 우선합니다.
+
 T자와 평행주차는 같은 쪽의 진입·진출을 **하나의 RDDF 이름**으로 표시/발행합니다.
 왼쪽과 오른쪽은 별개이며, 아래 통합으로 현재 RDDF 식별자는 총 **15개**입니다.
 
@@ -105,7 +116,9 @@ T자와 평행주차는 같은 쪽의 진입·진출을 **하나의 RDDF 이름*
 | `parallel_right` | `10_parallel-right-in`, `11_parallel-right-out` |
 
 같은 그룹 안의 진입·진출이 겹쳐도 `matched=true`로 그 그룹을 표시하며, RViz는 두 경로를
-함께 강조합니다. 왼쪽·오른쪽 또는 다른 경로까지 비슷하게 가까우면 `AMBIGUOUS_ROUTE`입니다.
+함께 강조합니다. 수동 초기화 클릭이 두 원본 RDDF에 걸리면 그룹 매칭이 성공했더라도
+후보 메뉴를 열어 진입/진출 원본 경로와 차체 방향을 명시적으로 고르게 합니다.
+왼쪽·오른쪽 또는 다른 경로까지 비슷하게 가까우면 `AMBIGUOUS_ROUTE`입니다.
 원본 19개 CSV의 좌표와 후진 방향은 유지합니다. 초기 위치·방향 선택은 원본 경로를 사용하고,
 현재 위치 표시에 사용할 그룹은 [`yongin_route_project.json`](../rddf/yongin_route_project.json)의
 `route_groups`에서 관리합니다.
@@ -139,7 +152,7 @@ roslaunch mando_localization rddf_tracking.launch
 | `has_nearest`, `nearest` | 최근 유효 위치에서 계산한 가장 가까운 투영 결과. `has_nearest=false`이면 `nearest`의 기본값을 사용하지 않음 |
 | `candidates` | 허용 거리 안에서 최단 거리 + 모호성 여유에 들어온 후보 선분 배열. 같은 경로의 다른 선분도 들어갈 수 있음 |
 
-`nearest`와 `candidates[]`의 타입은 [`RddfCandidate` ](../msg/RddfCandidate.msg)입니다.
+`nearest`와 `candidates[]`의 타입은 [`RddfCandidate`](../msg/RddfCandidate.msg)입니다.
 `route_name`(공개 이름), `source_route_name`(원본 CSV), `segment_index`, `projected_point`(map, m), `distance_m`(차량과 투영점 사이 거리),
 `heading_rad`(경로의 차량 진행 방향, ENU), `segment_fraction`(해당 선분 내 0~1)을 제공합니다.
 `segment_index`는 RDDF 조각 번호나 waypoint 전체 진행률이 아닙니다.
@@ -148,6 +161,8 @@ roslaunch mando_localization rddf_tracking.launch
 
 | `reason` | 구독 측 해석 |
 |---|---|
+| `MATCHED_OFF_ROUTE` | 활성 원본 경로를 유지한 채 거리 제한 밖. 실제 거리 확인 필요 |
+| `ROUTE_TRANSITION` | 연결된 다음 원본 경로로 전환 |
 | `MATCHED` | `matched=true`; `route_name`과 `nearest` 사용 가능 |
 | `AMBIGUOUS_ROUTE` | 경로가 겹치거나 여러 분기가 비슷하게 가까움. `candidates`를 확인하며 경로 하나를 확정하지 않음 |
 | `TOO_FAR` | 가장 가까운 RDDF도 5 m 초과. `nearest`는 참고용이며 현재 경로로 사용하지 않음 |
@@ -155,11 +170,11 @@ roslaunch mando_localization rddf_tracking.launch
 | `STALE_VALID`, `LOCALIZATION_INVALID` | valid 미수신/1초 초과 또는 false |
 | `FRAME_MISMATCH`, `INVALID_STAMP`, `INVALID_INPUT` | map 프레임 불일치, 0/미래 timestamp 또는 비정상 좌표 |
 
-실패 메시지도 계속 발행하며 이전 성공 경로를 유지하지 않습니다. ROS 시간이 뒤로 이동하면
+실패 메시지도 계속 발행합니다. 활성 원본 경로는 거리 이탈만으로 재선택하지 않으며 `MATCHED_OFF_ROUTE`에서 유지합니다. ROS 시간이 뒤로 이동하면
 저장한 pose와 valid를 비웁니다. 발행은 ROS 시간 기준이고 latch를 사용하지 않으므로,
 bag의 `/clock`이 정지하면 발행도 정지합니다. 구독자는 발행 노드 종료·통신 단절에 대비해
 자체 수신 timeout을 두고, `matched=true`인 새 메시지만 사용해야 합니다.
-위치만으로 판단하는 기하학적 매칭이므로 주행 미션이나 다음 경로를 결정하는 값은 아닙니다.
+최초 위치·방향 매칭 뒤에는 연결 관계·연속 진행과 미션 successor 요청을 사용합니다. State Manager의 미션 결정을 이 노드가 대신하지는 않습니다.
 
 Python 구독 예제:
 
@@ -237,6 +252,9 @@ localization start_rviz:=false  # 화면이 필요 없는 경우
 
 현재 `localization` 명령은 `map_data_collection.launch`를 사용하되
 `start_recording:=false`를 강제합니다. raw LiDAR와 정적 TF를 실행하며 위치 추정은 IMU·엔코더·GPS를 사용합니다.
+GPS 장치가 없으면 스크립트가 `enable_gps_fusion:=false`로 실행하고, RViz에서 수동
+RDDF 초기위치를 확정한 뒤 IMU·엔코더 기반 Local/Global EKF 결과를 최종 Odometry로
+출력합니다. 이 모드는 절대 위치·방향 보정이 없으므로 이동할수록 drift가 누적됩니다.
 
 LiDAR는 `lidar_front_scan_visualizer`가 만든
 `/mando_localization/visualization/lidar/front_scan`을 청록색으로 표시합니다.

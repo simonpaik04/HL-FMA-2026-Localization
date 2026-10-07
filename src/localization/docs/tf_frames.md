@@ -1,5 +1,8 @@
 # TF 프레임과 장착 설정
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 차량 기준점은 뒷바퀴 축 중심(`rear_axle_center`)입니다. `base_link`의 +X는 전방,
 +Y는 좌측, +Z는 위입니다. 위치·각도·각속도는 m·rad·rad/s이며,
 설정 파일의 `rotation_rpy_deg`만 degree, roll/pitch/yaw 순서입니다.

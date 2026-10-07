@@ -159,8 +159,8 @@
 
   <param name="/mando_localization/initialization/enabled" value="$(arg start_rddf_initialization)"/>
   <group if="$(arg start_rddf_initialization)">
-    <node pkg="mando_localization" type="rddf_initializer_node.py" name="rddf_initializer"
-          output="screen" clear_params="true" required="true">
+    <node respawn="true" respawn_delay="3.0" pkg="mando_localization" type="rddf_initializer_node.py" name="rddf_initializer"
+          output="screen" clear_params="true">
       <rosparam command="load" file="$(arg interfaces_config)"/>
       <rosparam command="load" file="$(arg gps_reference_config)"/>
       <rosparam command="load" file="$(arg rddf_initialization_config)"/>

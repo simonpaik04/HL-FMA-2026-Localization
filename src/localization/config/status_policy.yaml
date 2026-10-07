@@ -29,11 +29,11 @@ sources:
 absolute_sources:
   gps_enabled: true
   recovery_consecutive_measurements: 3
-  max_global_consistency_distance_m: 10.0
+  max_global_consistency_distance_m: 30.0
 
 dead_reckoning:
-  max_duration_sec: 2.0
-  max_distance_m: 10.0
+  max_duration_sec: 2000.0
+  max_distance_m: 1000.0
   limit_policy: first_exceeded
 
 output_gate:

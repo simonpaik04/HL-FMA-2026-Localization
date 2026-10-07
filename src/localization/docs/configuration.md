@@ -1,5 +1,8 @@
 # 설정 가이드
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 설정의 원본은 `config/` YAML입니다. 파일을 변경한 뒤 해당 노드를 재시작해야 합니다.
 문서에 모든 키를 복제하지 않고 파일별 책임과 함께 조정해야 하는 항목을 정리합니다.
 
@@ -12,8 +15,6 @@
 | [encoder_calibration.yaml](../config/encoder_calibration.yaml) | 속도 변환, alive·범위 검사, vx·vy 공분산 |
 | [imu_driver.yaml](../config/imu_driver.yaml) | Xsens 드라이버, IMU 정규화·공분산 |
 | [imu_heading_calibration.yaml](../config/imu_heading_calibration.yaml) | GNSS 직진 구간의 최초 yaw 보정 |
-| [rddf_initialization.yaml](../config/rddf_initialization.yaml) | RDDF datum, 시작 위치 선택과 적용 확인 |
-| [rddf_tracking.yaml](../config/rddf_tracking.yaml) | 현재 경로 후보 추적 |
 | [initial_heading.yaml](../config/initial_heading.yaml) | RDDF 출발 yaw, 보정 IMU 및 두 EKF의 공통 초기값 |
 | [gps_driver.yaml](../config/gps_driver.yaml) | u-blox 장치, UTC 헤더, 출력 설정 |
 | [time_sync.yaml](../config/time_sync.yaml) | 호스트 시계 검사와 센서 시각 진단 |
@@ -29,13 +30,16 @@
 
 ## 현재 핵심 조건
 
-- 기본 시작은 RDDF 경로에서 선택한 XY·차량 방향을 사용하는 초기화입니다. `initial_heading.yaml`의 고정 `1_right` yaw는 `start_rddf_initialization:=false`일 때 적용됩니다.
+- 기본 초기 자세는 선택된 RDDF의 XY·차량 방향입니다. 고정 `1_right` yaw는 RDDF 초기화가 비활성인 모드의 값입니다. 초기화 후 실제 회전량과
+  기존 GNSS 직진 보정을 반영합니다. 다른 방향에서 시작하면 `initial_heading_config`를
+  교체하거나 `initialize_heading:=false`를 사용합니다.
 - GPS는 `minimum_fix_status: 0`이며 RTK Fixed만 허용하는 설정이 아닙니다.
   status 통과 후에도 시각·좌표·공분산·Local innovation 검사가 필요합니다.
-- `gps_reference.yaml` 자체는 `first_fix`, `measured: false`입니다. 기본 RDDF 초기화 실행은 `rddf_initialization.yaml`의 `rddf_datum` 기준으로 덮어씁니다. 설계 경로 datum과 측량된 `manual_datum`은 구분합니다.
+- GPS YAML 자체는 `first_fix`, `measured: false`입니다. RDDF 초기화 실행은 `rddf_initialization.yaml`의 `rddf_datum`을 사용합니다. 지도 사용 시에는 지도 원점과 일치하는
+  측량된 `manual_datum`을 설정해야 합니다.
 - GPS-only `automatic_reset_enabled: false`입니다. 장기 단절 복구 조건은
   [GPS 문서](gps_quality_and_recovery.md)에 있습니다.
-- IMU는 `one_shot: true`, 보정각 적용 속도 상한 `90.0 deg/s`입니다.
+- IMU는 `one_shot: false`, 보정각 적용 속도 상한 `90.0 deg/s`입니다.
   직진 구간 선별 조건의 `max_yaw_rate_degps: 3.0`과는 다른 값입니다.
 - 같은 IMU YAML의 `encoder_yaw_hold.enabled: true`로 엔코더 0일 때 yaw를 유지합니다.
   alive가 갱신되는 0.30초 이내 feedback과 speed=0을 요구하며 비영점 tick은 고정하지 않습니다.

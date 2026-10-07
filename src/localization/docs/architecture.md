@@ -1,5 +1,8 @@
 # 현재 Localization 아키텍처
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 ROS1 Noetic의 IMU·엔코더 기반 Local/Global 두 EKF, GPS 품질 게이트,
 상태 감독과 최종 출력 게이트로 구성합니다. 라이다는 원시 스캔 수집과 표시에 사용합니다.
 
@@ -66,10 +69,13 @@ StatusManager는 보정 IMU·Twist·Local/Global·절대 위치와 게이트 상
 Local과 Global EKF는 동일한 보정 IMU의 yaw·yaw rate, 엔코더 vx와 vy=0 제약을
 사용합니다. Global은 Local Odometry 자체를 중복 융합하지 않고 승인된 GPS x/y를 추가로 융합합니다. Local Odometry는 절대 위치 정답이 아닙니다.
 
-기본 시작은 [RDDF 초기화](rddf_startup.md)입니다. 안정된 GPS 후보 또는 뷰어 수동 선택으로 경로의 XY와 차량 방향을 정하고 IMU·두 EKF에 적용한 뒤 결과를 확인합니다.
-`start_rddf_initialization:=false`일 때만 [initial_heading.yaml](../config/initial_heading.yaml)의 고정 출발 방향을 사용합니다.
+기본 시작은 [RDDF 초기화](rddf_startup.md)입니다. GPS 후보 또는 수동 선택으로 XY·차량 방향을 정하고 IMU·두 EKF에 적용한 결과를 확인합니다. 고정 `initial_heading.yaml` 출발 yaw는 `start_rddf_initialization:=false`일 때 사용합니다.
+
+현재 RDDF는 원본 경로를 이어서 추적하고 주차 그룹과 미션 successor 요청을 처리합니다. Provider는 `/route/map` 카탈로그를 제공합니다.
 
 ## GPS 승인과 복구
+
+현재 호스트 시각 검사 결과의 운행 차단은 `enforce_host_clock_ready: false`로 비활성입니다. GPS 자체의 시각·이력 검사는 유지됩니다.
 
 현재 `quality.minimum_fix_status: 0`으로 ROS status 0/1/2를 추가 검사합니다.
 RTK Fixed 전용 정책이 아닙니다. [GPS 문서](gps_quality_and_recovery.md)에
@@ -94,4 +100,4 @@ Supervisor만 공개 상태와 valid를 결정하고, Output Gate가 최종 Odom
 장착값과 검증 조건은 [TF 문서](tf_frames.md)를
 기준으로 확인합니다.
 
-공통 뷰어는 `frame_mode`에 따라 표시합니다. 현재 실시간 RDDF 초기화 구성은 `rddf_map`으로 입력 XY·yaw를 그대로 표시합니다. 기존 recorded 표시 모드에서는 첫 원시 GPS와 첫 Local로 표시용 XY 이동을 정합니다. 독립 표시 TF를 사용하고 운영 TF·EKF 입력은 수정하지 않습니다. RDDF 설계 경로와의 시각적 일치는 측량된 map 변환이나 GPS 절대 정확도 검증이 아닙니다.
+공통 뷰어의 실시간 RDDF 초기화 구성은 `rddf_map`으로 XY·yaw를 그대로 표시합니다. 기존 recorded 표시 모드는 첫 원시 GPS와 첫 Local로 표시용 XY 이동을 정할 수 있습니다. 운영 TF·EKF 입력은 수정하지 않습니다. RDDF는 설계 경로이며 화면의 일치는 측량 ground truth 정확도 검증이 아닙니다.

@@ -30,12 +30,53 @@ class TrackingTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_initialization_resolves_join_without_pinning_later_route(self):
+        self.configure_routes({'2': [(-10, 0), (0, 0)],
+                               '3_s-static-obstacle': [(0, 0), (10, 0)]})
+        self.tracker.update_pose(.02, .02, 10., 10., 'map', 0.)
+        self.tracker.update_valid(True, 10.)
+        self.assertFalse(self.tracker.evaluate(10.)['accepted'])
+        self.tracker.initialized_source = '3_s-static-obstacle'
+        result = self.tracker.evaluate(10.)
+        self.assertTrue(result['accepted'])
+        self.assertEqual(result['source_route'], '3_s-static-obstacle')
+        self.assertEqual(result['reason'], 'MATCHED_BY_INITIALIZATION')
+        self.assertIsNone(self.tracker.initialized_source)
+
+    def test_initialization_does_not_override_invalid_localization(self):
+        self.tracker.initialized_source = 'branch_a'
+        self.tracker.update_pose(25., 0., 10., 10., 'map', 0.)
+        self.tracker.update_valid(False, 10.)
+        self.assertEqual(self.tracker.evaluate(10.)['reason'], 'LOCALIZATION_INVALID')
+
     def configure_groups(self, groups, directions=None):
         root = Path(self.tmp.name)
         project = root/'yongin_route_project.json'
         data = json.loads(project.read_text())
         data['route_groups'] = groups
         data['route_directions'] = directions or {}
+        project.write_text(json.dumps(data))
+        self.tracker = RddfTracker(RddfRouteMap(root))
+
+    def configure_routes(self, routes):
+        root = Path(self.tmp.name)
+        for path in root.glob('*.csv'):
+            path.unlink()
+        header = ('route_id,route_name,closed,index,latitude,longitude,'
+                  'east_m,north_m,distance_m,path_yaw_rad\n')
+        for route_id, (name, points) in enumerate(routes.items(), 1):
+            rows, distance = [], 0.0
+            for index, (x, y) in enumerate(points):
+                if index:
+                    previous = points[index-1]
+                    distance += math.hypot(x-previous[0], y-previous[1])
+                rows.append('{},{},0,{},37,127,{},{},{},0\n'.format(
+                    route_id, name, index, x, y, distance))
+            (root/(name+'.csv')).write_text(header+''.join(rows))
+        project = root/'yongin_route_project.json'
+        data = json.loads(project.read_text())
+        data['route_groups'] = {}
+        data['route_directions'] = {}
         project.write_text(json.dumps(data))
         self.tracker = RddfTracker(RddfRouteMap(root))
 
@@ -59,6 +100,15 @@ class TrackingTest(unittest.TestCase):
         self.assertEqual(message.nearest.distance_m, 1.)
         self.assertAlmostEqual(abs(message.candidates[0].heading_rad-message.candidates[1].heading_rad), math.pi)
         self.assertEqual(current_rddf_members(routes, ['parking_left']), ['branch_a', 'branch_b'])
+
+    def test_body_heading_selects_source_leg_inside_parking_group(self):
+        self.configure_groups({'parking_left': ['branch_a', 'branch_b']},
+                              {'branch_b': 'reverse'})
+        self.feed(x=25., yaw=0.)
+        self.assertEqual(self.message().source_route_name, 'branch_a')
+        self.tracker = RddfTracker(self.tracker.route_map)
+        self.feed(x=25., yaw=math.pi)
+        self.assertEqual(self.message().source_route_name, 'branch_b')
 
     def test_left_right_overlap_stays_ambiguous(self):
         self.configure_groups({'parking_left': ['branch_a'], 'parking_right': ['branch_b']})
@@ -100,8 +150,8 @@ class TrackingTest(unittest.TestCase):
                 self.assertAlmostEqual(result['yaw'], original['yaw'])
                 self.assertAlmostEqual(result['distance'], 0.)
 
-    def feed(self, x=5., stamp=100., frame='map', valid=True):
-        self.tracker.update_pose(x, 1., stamp, 100., frame)
+    def feed(self, x=5., y=1., yaw=None, stamp=100., frame='map', valid=True):
+        self.tracker.update_pose(x, y, stamp, 100., frame, yaw)
         self.tracker.update_valid(valid, 100.)
 
     def message(self, now=100.):
@@ -174,6 +224,122 @@ class TrackingTest(unittest.TestCase):
         self.assertEqual(self.message(90.).reason, 'STALE_VALID')
         self.tracker.update_valid(True, 90.)
         self.assertTrue(self.message(90.).matched)
+
+    def test_active_route_survives_crossing_and_transitions_only_to_successor(self):
+        self.configure_routes({
+            '1_right': [(0, 0), (10, 0)],
+            '2': [(10, 0), (20, 0)],
+            '7': [(5, -5), (5, 5)],
+        })
+        self.feed(x=2, y=0, yaw=0)
+        first = self.message()
+        self.assertEqual(first.source_route_name, '1_right')
+        self.assertEqual(list(first.active_source_route_names), ['1_right', '2'])
+        self.feed(x=5, y=0, yaw=0)
+        crossing = self.message()
+        self.assertTrue(crossing.matched)
+        self.assertEqual(crossing.source_route_name, '1_right')
+        self.feed(x=10, y=0, yaw=0)
+        handoff = self.message()
+        self.assertTrue(handoff.matched)
+        self.assertEqual(handoff.reason, 'ROUTE_TRANSITION')
+        self.assertEqual(handoff.source_route_name, '2')
+        self.assertEqual(list(handoff.active_source_route_names), ['2'])
+
+    def test_active_window_advances_current_and_next_in_order(self):
+        self.configure_routes({
+            '1_left': [(0, 0), (10, 0)],
+            '2': [(10, 0), (20, 0)],
+            '3_s-static-obstacle': [(20, 0), (30, 0)],
+        })
+        self.feed(x=2, y=0, yaw=0)
+        self.assertEqual(list(self.message().active_source_route_names), ['1_left', '2'])
+        self.feed(x=10, y=0, yaw=0)
+        self.assertEqual(list(self.message().active_source_route_names),
+                         ['2', '3_s-static-obstacle'])
+
+    def test_active_route_is_retained_when_far_from_centerline(self):
+        self.configure_routes({'1_right': [(0, 0), (10, 0)]})
+        self.feed(x=2, y=0, yaw=0)
+        self.assertTrue(self.message().matched)
+        self.feed(x=2, y=20, yaw=0)
+        result = self.message()
+        self.assertTrue(result.matched)
+        self.assertEqual(result.source_route_name, '1_right')
+        self.assertEqual(result.reason, 'MATCHED_OFF_ROUTE')
+
+    def test_parallel_route_does_not_jump_to_nearby_later_gear_leg(self):
+        self.configure_routes({
+            '10_parallel-left-in': [
+                (0, 0), (1, 0), (2, 0), (3, 0), (4, 0),
+                (1.1, .05), (0, .05),
+            ],
+        })
+        self.tracker.initialized_source = '10_parallel-left-in'
+        self.feed(x=0, y=0, yaw=0)
+        self.assertEqual(self.message().nearest.segment_index, 0)
+
+        self.feed(x=1.1, y=.05, yaw=0)
+        matched = self.message()
+        self.assertLessEqual(matched.nearest.segment_index, 2)
+
+    def test_initial_crossing_uses_vehicle_heading(self):
+        self.configure_routes({
+            '1_right': [(0, 0), (10, 0)],
+            '7': [(5, -5), (5, 5)],
+        })
+        self.feed(x=5, y=0, yaw=math.pi/2)
+        matched = self.message()
+        self.assertTrue(matched.matched)
+        self.assertEqual(matched.reason, 'MATCHED_BY_HEADING')
+        self.assertEqual(matched.source_route_name, '7')
+
+    def test_requested_section_one_branch_overrides_initial_match(self):
+        self.configure_routes({
+            '1_left': [(0, 0), (10, 0)],
+            '1_right': [(0, 0), (10, 0)],
+        })
+        self.tracker.update_successor_request('1_right')
+        self.feed(x=2, y=0, yaw=0)
+        matched = self.message()
+        self.assertTrue(matched.matched)
+        self.assertEqual(matched.reason, 'MATCHED_BY_REQUEST')
+        self.assertEqual(matched.source_route_name, '1_right')
+
+    def test_late_section_one_request_replaces_initial_heading_choice(self):
+        self.configure_routes({
+            '1_left': [(0, 0), (10, 0)],
+            '1_right': [(10, 0), (0, 0)],
+        })
+        self.feed(x=2, y=0, yaw=0)
+        self.assertEqual(self.message().source_route_name, '1_left')
+        self.tracker.update_successor_request('1_right')
+        self.feed(x=2, y=0, yaw=0)
+        matched = self.message()
+        self.assertEqual(matched.reason, 'MATCHED_BY_REQUEST')
+        self.assertEqual(matched.source_route_name, '1_right')
+
+    def test_initial_acquisition_still_allows_arbitrary_section(self):
+        self.configure_routes({
+            '1_right': [(0, 0), (10, 0)],
+            '2': [(10, 0), (20, 0)],
+        })
+        self.feed(x=15, y=0, yaw=0)
+        self.assertEqual(self.message().source_route_name, '2')
+
+    def test_requested_branch_is_validated_and_activated_by_localization(self):
+        self.configure_routes({
+            '12': [(0, 0), (10, 0)],
+            '13_left': [(5, 0), (5, 5)],
+            '13_right': [(10, 0), (20, 0)],
+        })
+        self.feed(x=5, y=0, yaw=0)
+        self.assertEqual(self.message().source_route_name, '12')
+        self.tracker.update_successor_request('13_left')
+        self.feed(x=5, y=0, yaw=0)
+        selected = self.message()
+        self.assertEqual(selected.reason, 'ROUTE_TRANSITION')
+        self.assertEqual(selected.source_route_name, '13_left')
 
 
 if __name__ == '__main__':

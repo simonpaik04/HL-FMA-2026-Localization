@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   nav_msgs
+  planning_interfaces
+  rospy
   robot_localization
   roscpp
   sensor_msgs
@@ -51,7 +53,7 @@ catkin_package(
     mando_localization_tf
     mando_localization_visualization
   CATKIN_DEPENDS
-    diagnostic_msgs erp42_msgs geometry_msgs message_runtime nav_msgs robot_localization roscpp
+    diagnostic_msgs erp42_msgs geometry_msgs message_runtime nav_msgs planning_interfaces robot_localization roscpp rospy
     sensor_msgs std_msgs tf2 tf2_geometry_msgs tf2_ros topic_tools visualization_msgs ublox_msgs
 )
 
@@ -216,6 +218,7 @@ install(DIRECTORY config docs launch maps rddf udev
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 catkin_install_python(PROGRAMS
+  scripts/rddf_route_provider.py
   scripts/rddf_initialization_core.py
   scripts/rddf_tracking_core.py
   scripts/rddf_tracker_node.py
@@ -227,8 +230,6 @@ catkin_install_python(PROGRAMS
   scripts/sensor_timing_monitor.py
   scripts/localization_viewer.py
   scripts/lidar_front_scan_visualizer.py
-  scripts/live_imu_test_relay.py
-  scripts/keyboard_encoder_test.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 install(PROGRAMS

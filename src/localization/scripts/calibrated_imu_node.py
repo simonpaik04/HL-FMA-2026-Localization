@@ -20,6 +20,7 @@ from geometry_msgs.msg import TwistWithCovarianceStamped
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Bool
 from ublox_msgs.msg import NavPVT
+from mando_localization.msg import RddfMatch
 from mando_localization.srv import SetInitialHeading, SetInitialHeadingResponse
 
 
@@ -33,6 +34,11 @@ class CalibratedIMU:
             self.core.initial_heading = None
         self.heading_transaction = None
         self.p = self.core.p
+        self.rddf_heading_force_on_entry_routes = set(
+            str(route) for route in rospy.get_param(
+                '~rddf_heading_force_on_entry_routes', []))
+        self.last_rddf_route = None
+        self.forced_rddf_entry_routes = set()
         self.topics = rospy.get_param('~topics')
         self.frames = rospy.get_param('~frames')
         for key in ('imu_normalized', 'imu_calibrated', 'gps_navpvt', 'encoder_twist', 'encoder_state'):
@@ -62,6 +68,8 @@ class CalibratedIMU:
                              self.twist_callback, queue_size=100),
             rospy.Subscriber(self.topics['encoder_state'], SerialFeedBack,
                              self.feedback_callback, queue_size=100),
+            rospy.Subscriber(self.topics['current_rddf'], RddfMatch,
+                             self.rddf_callback, queue_size=10),
             rospy.Subscriber(rospy.get_param('~internal_topics/clock_ready'), Bool,
                              self.clock_callback, queue_size=5),
         ]
@@ -78,6 +86,23 @@ class CalibratedIMU:
             rospy.logwarn('Initial yaw alignment assumes forward straight motion until calibrated; '
                           'Gear is not a verified direction signal.')
 
+    def rddf_callback(self, message):
+        with self.lock:
+            if not message.matched:
+                return
+            previous = self.last_rddf_route
+            self.last_rddf_route = message.route_name
+            if (previous is not None and previous != message.route_name
+                    and message.route_name in self.rddf_heading_force_on_entry_routes
+                    and message.route_name not in self.forced_rddf_entry_routes
+                    and self._mount()):
+                if self.core.force_body_yaw(message.nearest.heading_rad, self.mount):
+                    self.forced_rddf_entry_routes.add(message.route_name)
+                    rospy.loginfo(
+                        'Forced yaw once on RDDF entry %s -> %s: %.3f deg',
+                        previous,
+                        message.route_name, math.degrees(message.nearest.heading_rad))
+
     def set_initial_heading(self, request):
         with self.lock:
             now = self._time()
@@ -85,9 +110,14 @@ class CalibratedIMU:
             if not self.wait_for_rddf or request.transaction_id == 0:
                 return SetInitialHeadingResponse(False, 'DYNAMIC_INITIALIZATION_DISABLED', rospy.Time())
             if self.heading_transaction is not None:
-                okay = signature == self.heading_transaction and self.core.initialized
-                return SetInitialHeadingResponse(okay, 'ALREADY_INITIALIZED',
-                    rospy.Time.from_sec(self.core.initialization_stamp or 0.))
+                if signature == self.heading_transaction:
+                    return SetInitialHeadingResponse(self.core.initialized, 'ALREADY_INITIALIZED',
+                        rospy.Time.from_sec(self.core.initialization_stamp or 0.))
+                if not self._mount() or not self.core.force_body_yaw(request.yaw_rad, self.mount):
+                    return SetInitialHeadingResponse(False, 'WAITING_FOR_FRESH_IMU', rospy.Time())
+                self.heading_transaction = signature
+                return SetInitialHeadingResponse(True, 'RDDF_REINITIALIZED',
+                    rospy.Time.from_sec(self.core.initialization_stamp or now))
             if (self.last_imu_mono is None or time.monotonic()-self.last_imu_mono > self.p["max_imu_age_sec"]):
                 return SetInitialHeadingResponse(False, "WAITING_FOR_FRESH_IMU", rospy.Time())
             if not self._mount() or not self.core.select_initial_heading(

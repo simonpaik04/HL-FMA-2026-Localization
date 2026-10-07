@@ -249,14 +249,19 @@ EncoderToTwistAdapter::make_twist(
 // 반환값: 없음
 void EncoderToTwistAdapter::encoder_callback(
     const erp42_msgs::SerialFeedBack::ConstPtr& message) {
+  erp42_msgs::SerialFeedBack measurement = *message;
+  if (measurement.EStop != 0U) {
+    measurement.speed = 0.0;
+    measurement.encoder = 0;
+  }
   std::string reason;
-  if (!validate_measurement(*message, &reason)) {
+  if (!validate_measurement(measurement, &reason)) {
     ROS_WARN_THROTTLE(1.0, "Rejecting encoder measurement: %s",
                       reason.c_str());
     return;
   }
   const ros::Time receipt_stamp = ros::Time::now();
-  twist_publisher_.publish(make_twist(*message, receipt_stamp));
+  twist_publisher_.publish(make_twist(measurement, receipt_stamp));
   last_alive_counter_ = message->alive;
   have_last_alive_counter_ = true;
 }

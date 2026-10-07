@@ -41,11 +41,13 @@ static_transforms:
     source: ""
   - parent_frame: base_link
     child_frame: laser_link
+    # base_link(후륜축) + wheelbase 0.75 m + 전륜축 전방 0.30 m.
     translation_m: [1.05, 0.0, 0.0]
-    # roll=180: 윗면이 아래, yaw=180: 전방 축이 차량 뒤쪽.
+    # 기존 yaw=180은 RPLIDAR raw scan의 앞뒤 축을 차량과 맞추는 보정이다.
+    # 여기에 물리 장착 roll=180을 추가해 yaw-only 대비 좌우만 반전한다.
     # 장착 회전은 TF에서만 적용하며 lidar_driver.yaml의 inverted=false를 유지한다.
     rotation_rpy_deg: [180.0, 0.0, 180.0]
     enabled: true
     calibration_state: measured
     measured_at: "2026-09-05"
-    source: user_confirmed_position_2026-09-05_upside_down_rear_facing_2026-09-07
+    source: user_confirmed_front_axle_plus_0.30m_and_axes_2026-09-17

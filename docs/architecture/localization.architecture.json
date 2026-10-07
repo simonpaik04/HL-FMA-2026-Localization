@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "차량 Localization · 융합과 출력 승인",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Team-Stier/HL-FMA-1-5-2026",
+      "revision": "fba9a5c12382a61a2711fe5685fe839e20c804c3",
+      "provider": "github"
+    }
+  },
+  "components": [
+    {
+      "id": "motion-sensors",
+      "type": "external",
+      "label": "IMU · 엔코더",
+      "sublabel": "원본 자세 · 차량 feedback",
+      "pos": [
+        40,
+        260
+      ],
+      "size": [
+        200,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/config/localization_interfaces.yaml"
+        }
+      ]
+    },
+    {
+      "id": "motion-estimation",
+      "type": "backend",
+      "label": "전처리 · 두 EKF",
+      "sublabel": "Local 운동 · Global GPS 융합",
+      "pos": [
+        380,
+        260
+      ],
+      "size": [
+        220,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/launch/local_fusion.launch"
+        },
+        {
+          "path": "src/localization/launch/global_fusion.launch"
+        }
+      ]
+    },
+    {
+      "id": "publication-gate",
+      "type": "security",
+      "label": "Output Gate",
+      "sublabel": "상태 freshness · 메시지 계약",
+      "pos": [
+        740,
+        260
+      ],
+      "size": [
+        220,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/src/output_gate/localization_output_gate.cpp"
+        }
+      ]
+    },
+    {
+      "id": "public-pose",
+      "type": "messagebus",
+      "label": "최종 차량 위치",
+      "sublabel": "Odometry · Path · Markers",
+      "pos": [
+        1100,
+        260
+      ],
+      "size": [
+        200,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/config/localization_interfaces.yaml"
+        }
+      ]
+    },
+    {
+      "id": "gnss-input",
+      "type": "external",
+      "label": "GPS · NAV-PVT",
+      "sublabel": "절대 위치 · GNSS 방향",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        200,
+        88
+      ]
+    },
+    {
+      "id": "gnss-approval",
+      "type": "backend",
+      "label": "GPS Gate · 복구",
+      "sublabel": "측정 시각 · 품질 · reanchor ACK",
+      "pos": [
+        380,
+        40
+      ],
+      "size": [
+        220,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/src/odometry_gps_fusion/odometry_gps_fusion.cpp"
+        },
+        {
+          "path": "src/localization/src/relocalization/relocalization_coordinator.cpp"
+        }
+      ]
+    },
+    {
+      "id": "rddf-startup",
+      "type": "backend",
+      "label": "초기화 · RDDF 경로",
+      "sublabel": "초기 자세 · 연속 추적 · 카탈로그",
+      "pos": [
+        380,
+        480
+      ],
+      "size": [
+        220,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/scripts/rddf_initializer_node.py"
+        },
+        {
+          "path": "src/localization/scripts/rddf_tracking_core.py"
+        },
+        {
+          "path": "src/localization/scripts/rddf_route_provider.py"
+        }
+      ]
+    },
+    {
+      "id": "status-supervisor",
+      "type": "security",
+      "label": "상태 감독",
+      "sublabel": "Manager · Supervisor",
+      "pos": [
+        740,
+        480
+      ],
+      "size": [
+        220,
+        88
+      ],
+      "sources": [
+        {
+          "path": "src/localization/src/supervisor/localization_supervisor_node.cpp"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "from": "motion-sensors",
+      "to": "motion-estimation",
+      "label": "yaw · 속도"
+    },
+    {
+      "from": "motion-estimation",
+      "to": "publication-gate",
+      "label": "Global"
+    },
+    {
+      "from": "publication-gate",
+      "to": "public-pose",
+      "label": "승인 시 발행",
+      "variant": "emphasis"
+    },
+    {
+      "from": "gnss-input",
+      "to": "gnss-approval",
+      "label": "fix"
+    },
+    {
+      "from": "gnss-approval",
+      "to": "motion-estimation",
+      "label": "승인 GPS XY",
+      "labelDy": 24
+    },
+    {
+      "from": "rddf-startup",
+      "to": "motion-estimation",
+      "label": "초기 자세"
+    },
+    {
+      "from": "status-supervisor",
+      "to": "publication-gate",
+      "label": "state · valid",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "연속 운동과 절대 위치",
+      "items": [
+        "Local은 연속 운동 · Global은 GPS XY 추가",
+        "초기화는 두 EKF에 적용한 결과 확인"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "지연 GPS와 방향 보정",
+      "items": [
+        "측정 시각의 Local 이력 · 복구 ACK",
+        "조건을 만족하는 GNSS 직진 구간 반복 정합"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "사용 가능한 최종 출력",
+      "items": [
+        "감독기는 센서·EKF·복구 상태 관찰",
+        "승인과 메시지 계약을 함께 확인"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "RDDF와 미션 연결",
+      "items": [
+        "현재 경로 유지 · 다음 원본 경로 요청 처리",
+        "19개 원본 · 주차 그룹 포함 15개 공개 이름"
+      ]
+    }
+  ]
+}

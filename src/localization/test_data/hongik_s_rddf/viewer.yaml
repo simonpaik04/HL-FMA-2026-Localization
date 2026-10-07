@@ -1,5 +1,4 @@
-# GPS 없는 실 IMU + 가상 엔코더 테스트. 입력 XY/yaw를 그대로 표시한다.
-rddf_directory: rddf
+rddf_directory: test_data/hongik_s_rddf
 refresh_ms: 100
 max_samples_per_topic: 200000
 imu_raw_stale_sec: 0.5
@@ -36,6 +35,3 @@ colors:
 manual_snap_distance_m: 5.0
 current_rddf_max_distance_m: 5.0
 current_rddf_ambiguity_distance_m: 0.5
-frame_mode: rddf_map
-# 이 테스트는 시작 위치가 고정되며 RDDF 초기화 노드를 실행하지 않는다.
-manual_initialization_enabled: false

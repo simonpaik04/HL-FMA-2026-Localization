@@ -9,6 +9,9 @@ encoder_yaw_hold:
   history_max_samples: 500
   # Header 없는 feedback의 PC 수신 시각 이력 상한. 시간 역행 시 초기화한다.
 
+# LiDAR 기반 미션 및 T 주차 RDDF로 전환되는 순간에만 보정 IMU yaw를 새 RDDF 접선에 맞춘다.
+rddf_heading_force_on_entry_routes: ["3_s-static-obstacle", "8_dynamic-obstacle", "T_left", "T_right"]
+
 imu_heading_calibration:
   enabled: true
   # GNSS 기반 yaw 보정 사용 여부. false이면 새 보정을 수행하지 않는다.

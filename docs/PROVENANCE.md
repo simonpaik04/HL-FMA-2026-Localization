@@ -1,38 +1,53 @@
 # 추출 범위와 출처
 
-이 저장소는 `Team-Stier/HL-FMA2026-stier`의 localization을 독립적인 Catkin 작업공간으로 정리한 것입니다. 패키지명 `mando_localization`과 기존 토픽·메시지 이름을 유지합니다.
+이 저장소는 최종 차량 프로젝트의 Localization을 독립 Catkin 작업공간으로 정리했습니다.
 
-## 추출 기준
+## 최종 기준
 
-- 원본: https://github.com/Team-Stier/HL-FMA2026-stier
-- 기준 commit: `799f0c17c5f5e80967098a64ff19f30a9f1f09db`
-- 정리 날짜: 2026-10-08 (Asia/Seoul)
-- `src/localization/`은 당시 로컬 작업 트리의 수정·추가 파일을 포함합니다. 위 commit만으로 동일한 snapshot을 재현할 수는 없습니다.
-- 기존 수정: 패키지 CMake, README, 뷰어와 뷰어 테스트.
-- 기존 추가: 키보드 IMU 테스트의 launch·YAML·Python relay/encoder·설명 문서.
-- 지원 패키지 `erp42_msgs`는 원본 `src/interfaces/vehicle_interface/erp42_msgs`에서 가져왔습니다. Localization이 사용하는 엔코더 입력 메시지 호환을 위한 것이며, 별도로 새로 구현한 메시지라고 주장하지 않습니다.
-- 이번 정리에서는 최상위 README·문서 목차·검증 기록을 작성하고, 기존 운영 README를 `src/localization/docs/operations.md`로 옮겼습니다. 운영 wrapper의 작업공간 기본 경로를 현재 checkout 기준으로 변경했습니다. `launch.sh`의 오래된 패키지/launch 이름과 설정 테스트의 지원 패키지 경로를 독립 배치에 맞췄습니다. 기존 설명 중 고정 yaw·datum·LiDAR와 뷰어 좌표 모드의 오래된 문구를 현재 기본 실행에 맞게 정리했습니다.
-- 다른 차량 모듈, 센서 드라이버 소스, bag·빌드 산출물, 과거 실험 archive, 자동 생성 HTML/이미지와 검사·모델 사용 집계 산출물은 제외했습니다.
+- 원본: [Team-Stier/HL-FMA-1-5-2026](https://github.com/Team-Stier/HL-FMA-1-5-2026)
+- branch: `main`
+- 기준 commit: `fba9a5c12382a61a2711fe5685fe839e20c804c3`
+- 추출 날짜: 2026-10-08 (Asia/Seoul)
+- 구현·설정·launch·메시지·RDDF·테스트 자료는 위 commit의 `src/localization`을 기준으로 합니다. 원본의 로컬 미커밋 변경은 섞지 않았습니다.
+- 이전 독립 레포의 `Team-Stier/HL-FMA2026-stier` 기반 구현은 Git 이력에 남습니다. 이전 키보드 IMU 테스트 파일은 최종 원본에 없어 현재 배치에서 제외했습니다.
+
+## 포함과 제외
+
+| 포함 | 원본 위치 |
+|---|---|
+| Localization 구현·설정·메시지·경로·테스트 | `src/localization` |
+| 차량 feedback 지원 메시지 | `src/interfaces/vehicle_interface/erp42_msgs` |
+| Route/RouteMap 등 기존 지원 메시지 | `src/interfaces/planning_interfaces` |
+
+지원 메시지 패키지는 외부 통합 계약을 유지하기 위한 것입니다. 새로 구현한 localization 알고리즘으로 주장하지 않습니다. 다른 차량 모듈, 센서 드라이버 소스, rosbag·빌드 결과, 과거 archive, 기존 자동 생성 HTML·그림·검사와 모델 사용 집계 자료는 포함하지 않습니다.
+
+독립 배치에 맞춘 변경은 패키지 README·상세 문서와 최상위 소개, 설정 테스트의 `erp42_msgs` 경로, 두 shell wrapper의 workspace 기본 경로입니다. 원본 RDDF README의 State Manager 그림 링크는 원본 GitHub 주소로 연결했습니다. 지원 메시지의 파일 끝 빈 줄만 정리했고 필드·상수는 유지했습니다. C++·Python 핵심 동작, 최종 YAML 값과 ROS 메시지 계약은 그대로 가져왔습니다. 새 방어 로직이나 정책을 추가하지 않았습니다.
 
 ## 드라이버와 외부 의존성
 
-EKF 구현은 `robot_localization`, ROS 메시지·TF·시각화는 ROS 패키지를 사용합니다. 이 저장소의 핵심 빌드에는 `erp42_msgs`와 `ublox_msgs`가 필요합니다. 전자는 포함하고 후자는 rosdep/ROS 배포판으로 설치합니다.
+EKF 구현은 `robot_localization`, ROS 메시지·TF·시각화는 ROS 패키지를 사용합니다. `erp42_msgs`, `planning_interfaces`는 포함하고 `ublox_msgs`는 ROS 배포판/rosdep으로 설치합니다.
 
-실센서 실행에는 센서별 드라이버를 별도로 준비합니다.
-
-| 센서 | 필요한 패키지/설정 |
+| 센서 | 필요한 패키지·설정 |
 |---|---|
 | Xsens IMU | `xsens_mti_driver`, `config/imu_driver.yaml` |
-| u-blox GNSS | 프로젝트에서 수정한 `ublox_gps`와 타이밍 진단, `config/gps_driver.yaml`, `config/time_sync.yaml` |
-| Arduino encoder | `rosserial_python`, 기존 feedback firmware와 `config/encoder_driver.yaml` |
-| RPLIDAR, 선택 | `rplidar_ros`, 장착 TF와 `map_data_collection.launch` |
+| u-blox GNSS | 프로젝트의 수정 `ublox_gps`, `config/gps_driver.yaml`, `config/time_sync.yaml` |
+| Arduino encoder | `rosserial_python`, 기존 feedback firmware, `config/encoder_driver.yaml` |
+| RPLIDAR, 선택 | `rplidar_ros`, 장착 TF, `map_data_collection.launch` |
 
-원본 드라이버 위치는 `src/sensor_drivers/imu/xsens_ros_mti_driver`와 `src/sensor_drivers/gps/ublox`입니다. ROS workspace에 해당 패키지를 별도 배치하고 드라이버 자체의 README와 의존성에 따라 빌드합니다. 서로 다른 workspace를 사용하는 경우 localization 빌드 전에 driver workspace의 `devel/setup.bash`도 source합니다. apt로 설치한 같은 이름의 패키지와 중복 배치하지 않습니다.
+원본 드라이버 위치는 `src/sensor_drivers/imu/xsens_ros_mti_driver`와 `src/sensor_drivers/gps/ublox`입니다. 필요한 센서 드라이버만 별도 ROS workspace에서 해당 README·의존성에 따라 빌드합니다. 별도 workspace를 쓰면 localization 빌드 전에 driver workspace의 `devel/setup.bash`도 source합니다. 같은 패키지를 apt와 소스 workspace에서 중복 배치하지 않습니다.
 
-현재 시각 모니터는 `ublox_gps: measurement timing` 진단과 `receipt_minus_utc_clock_offset_plus_transport_ns` 등의 필드를 읽습니다. 일반 `ublox_gps`의 동일한 동작을 가정하지 않습니다. 필요한 드라이버 출력은 원본 [수정 GPS 드라이버](https://github.com/Team-Stier/HL-FMA2026-stier/tree/799f0c17c5f5e80967098a64ff19f30a9f1f09db/src/sensor_drivers/gps/ublox)와 [시각 모니터](../src/localization/scripts/sensor_timing_monitor.py)를 참고합니다. `clock_ready`를 임의로 true로 바꾸어 검증을 우회하는 실행 방법은 제공하지 않습니다.
+시각 모니터는 `ublox_gps: measurement timing`과 `receipt_minus_utc_clock_offset_plus_transport_ns` 등의 진단 필드를 읽습니다. 일반 배포판 드라이버에 같은 출력이 있다고 가정하지 않습니다. 최종 기본 설정은 호스트 시각에 의한 `clock_ready` 차단을 비활성화하지만 GPS 자체의 timestamp·이력 정합 검사는 유지됩니다. 진단 호환성과 운행 승인 조건을 구분합니다.
 
-`localization_record_command.sh`는 별도의 CAN capture 스크립트도 요구하는 현장용 wrapper입니다. 그 스크립트는 이 저장소에 포함하지 않으며, 사용할 때 `MANDO_CAPTURE_SCRIPT`로 지정합니다. 일반 융합과 rosbag 재계산은 이 wrapper 없이 실행할 수 있습니다. command wrapper의 workspace 자동 탐지는 소스 트리 배치 기준이며, catkin install 배치에서는 `MANDO_LOCALIZATION_WS`를 명시합니다.
+원본 [GPS 드라이버](https://github.com/Team-Stier/HL-FMA-1-5-2026/tree/fba9a5c12382a61a2711fe5685fe839e20c804c3/src/sensor_drivers/gps/ublox)와 [시각 모니터](../src/localization/scripts/sensor_timing_monitor.py)를 참고합니다.
+
+현장 wrapper `localization_record_command.sh`는 별도 CAN capture 스크립트를 요구합니다. 이 파일은 포함하지 않으므로 사용할 때 `MANDO_CAPTURE_SCRIPT`로 지정합니다. 일반 bringup·rosbag 재계산은 이 wrapper 없이 실행할 수 있습니다. workspace 자동 탐지는 소스 트리 배치 기준이며 catkin install 배치에서는 `MANDO_LOCALIZATION_WS`를 명시합니다.
+
+## 이미지와 Archify
+
+대표 화면과 분석 그래프는 이 PC에 있던 `Rosbag/rddf_display_check_20260914`의 실제 과거 재생 자료입니다. 원본 bag 기록은 `20260906_123929`, 화면 검증은 2026-09-14입니다. 새 최종 commit의 실행을 캡처했다고 주장하지 않습니다. 이미지 출처·해시는 [기록](architecture/runtime-image-provenance.json)에 남깁니다.
+
+Archify는 위 최종 commit의 코드·launch를 근거로 다시 작성했습니다. [JSON·HTML·검증 기록](architecture/README.md)을 함께 제공합니다. 그림의 검증과 localization 런타임 테스트 결과는 구분합니다.
 
 ## 기존 라이선스 표기
 
-`mando_localization/package.xml`의 기존 표기는 `BSD-3-Clause`입니다. 지원 패키지 `erp42_msgs/package.xml`은 원본의 `TODO` 표기를 유지합니다. 저장소 전체에 새 라이선스를 일괄 부여하거나 외부 코드의 저작권·라이선스를 임의로 변경하지 않았습니다. 별도 LICENSE 본문과 지원 패키지의 라이선스 확정은 현재 snapshot에 포함되지 않습니다.
+`mando_localization`의 manifest는 `BSD-3-Clause`, `planning_interfaces`는 `MIT`, `erp42_msgs`는 원본의 `TODO` 표기입니다. 저장소 전체에 새 라이선스를 일괄 부여하거나 외부 코드의 저작권·라이선스를 임의로 변경하지 않았습니다. 별도 LICENSE 본문과 지원 패키지 라이선스 확정은 현재 snapshot에 포함되지 않습니다.

@@ -18,6 +18,13 @@ spec = importlib.util.spec_from_file_location(
 core = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core)
 
+tracking_spec = importlib.util.spec_from_file_location(
+    "rddf_tracking_core",
+    Path(__file__).resolve().parents[1] / "scripts/rddf_tracking_core.py",
+)
+tracking_core = importlib.util.module_from_spec(tracking_spec)
+tracking_spec.loader.exec_module(tracking_core)
+
 
 class RddfInitializationCoreTest(unittest.TestCase):
     def setUp(self):
@@ -248,6 +255,35 @@ class RddfInitializationCoreTest(unittest.TestCase):
                        {"same_branch_distance_m": float("nan")}):
             with self.assertRaises(ValueError):
                 core.RddfRouteMap(self.directory, **kwargs)
+
+    def test_parking_successor_requires_exact_mission_request(self):
+        self.route("4", [(-10, 0), (0, 0)])
+        self.route("5_T-left-in", [(0, 0), (10, 0)])
+        self.route("6-T-left-out", [(10, 0), (20, 0)])
+        route_map = core.RddfRouteMap(self.directory)
+
+        def tracker_at(source, x):
+            tracker = tracking_core.RddfTracker(route_map)
+            tracker.active_source = source
+            tracker.active_progress = 0.0
+            tracker.update_pose(x, 0.0, 10.0, 10.0, "map", 0.0)
+            tracker.update_valid(True, 10.0)
+            return tracker
+
+        for current, target, x in (("4", "5_T-left-in", 0.0),
+                                   ("5_T-left-in", "6-T-left-out", 10.0)):
+            with self.subTest(current=current, target=target):
+                tracker = tracker_at(current, x)
+                held = tracker.evaluate(10.0)
+                self.assertTrue(held["accepted"])
+                self.assertEqual(held["source_route"], current)
+                self.assertNotEqual(held["reason"], "ROUTE_TRANSITION")
+
+                tracker.update_successor_request(target)
+                transitioned = tracker.evaluate(10.0)
+                self.assertTrue(transitioned["accepted"])
+                self.assertEqual(transitioned["source_route"], target)
+                self.assertEqual(transitioned["reason"], "ROUTE_TRANSITION")
 
 
 if __name__ == "__main__":

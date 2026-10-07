@@ -45,6 +45,7 @@ class LocalizationOutputGate {
   ros::Publisher output_publisher_;
 
   bool valid_{false};
+  bool allow_unbounded_position_variance_{false};
   bool initialization_required_{false};
   bool initialization_ready_{false};
   double initialization_ready_timeout_sec_{0.5};

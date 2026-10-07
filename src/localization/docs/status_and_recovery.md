@@ -1,5 +1,8 @@
 # 상태 판단과 장애 복구
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 전체 구성은 [아키텍처](architecture.md), GPS 세부 승인 조건은
 [GPS 품질·재연결](gps_quality_and_recovery.md)을 참고합니다.
 
@@ -108,7 +111,7 @@ GPS gate 자체 신호는 `/mando_localization/internal/gps/gate_relocalizing`�
 
 ## GPS·Global 일관성 검사
 
-healthy GPS pose와 최신 Global Odometry의 XY 거리가 `max_global_consistency_distance_m` 기본 10 m를 넘으면 보정이 Global 결과와 일치하지 않는 것으로 봅니다.
+healthy GPS pose와 최신 Global Odometry의 XY 거리가 `max_global_consistency_distance_m`의 현재 설정값 30 m를 넘으면 보정이 Global 결과와 일치하지 않는 것으로 봅니다.
 
 이 조건들은 모두 `RELOCALIZING`과 출력 차단으로 이어집니다. GPS gate의 prediction anchor 적용에는 명시적인 transaction ack가 있지만, `robot_localization`이 각 GPS 측정을 내부 innovation gate에서 수용했다는 별도 acknowledgement는 없습니다. 일반 융합 입력은 pose와 Global 결과의 거리 일관성으로 간접 감시합니다.
 
@@ -116,10 +119,20 @@ healthy GPS pose와 최신 Global Odometry의 XY 거리가 `max_global_consisten
 
 마지막 fresh 절대 pose가 승인된 receipt time을 기준으로 시간과 이동거리를 관리합니다. healthy 절대 소스가 0개일 때 Global Odometry XY 증분을 누적합니다.
 
+GPS를 활성화한 세션에서 GPS가 끊긴 경우에는 아래 예산을 적용합니다. 반대로
+`enable_gps_fusion:=false`로 시작하고 수동 RDDF anchor를 확정한 세션은 GPS가
+의도적으로 없는 모드이므로, IMU·엔코더와 Local/Global EKF가 정상인 동안 이 예산으로
+차단하지 않고 `DEAD_RECKONING`, `valid=true`를 유지합니다. 절대 보정이 없으므로 오차는
+계속 누적됩니다.
+
+이 GPS 비활성 모드에서는 Output Gate도 증가하는 XY 위치 공분산의 운용 상한만
+적용하지 않습니다. 공분산 전체의 유한성·비음수·절대 최대값, frame, timestamp,
+quaternion, twist 검사와 Supervisor `valid` 조건은 계속 적용합니다.
+
 ```text
-seconds_since_absolute <= 2.0 s
+seconds_since_absolute <= 200.0 s
 AND
-dead_reckoning_distance <= 10.0 m
+dead_reckoning_distance <= 1000.0 m
 ```
 
 두 값이 모두 한계 이하여야 `DEAD_RECKONING`, `valid=true`입니다. 어느 하나라도 한계를 초과하면 `FAULT`, `valid=false`입니다. 정확히 경계값과 같을 때는 아직 허용하고 `>`에서 차단합니다.
@@ -159,8 +172,9 @@ Supervisor의 `valid=true`만으로는 공개하지 않습니다. Output Gate는
 
 ```text
 INITIALIZING --local motion + 최초 절대 후보 3회--> TRACKING
+INITIALIZING --GPS 비활성 + 수동 RDDF anchor--> DEAD_RECKONING(valid)
 TRACKING --GPS 무응답 timeout--> DEAD_RECKONING
-DEAD_RECKONING --2초 또는 10 m 초과--> FAULT
+DEAD_RECKONING --2000초 또는 1000 m 초과--> FAULT
 ANY --소스 복구 gate/Global 불일치--> RELOCALIZING
 RELOCALIZING --연속 후보 통과 및 일관성 회복--> TRACKING
 ANY --시작 유예 후 local motion 또는 Global 출력 invalid--> FAULT
@@ -169,7 +183,7 @@ ANY --시작 유예 후 local motion 또는 Global 출력 invalid--> FAULT
 ## 검증 시나리오
 
 1. 최초 GPS 후보 1·2회에는 `INITIALIZING`, 3회째 승인 후 `TRACKING`인지 확인
-3. 모든 절대 pose를 끊고 2초 또는 10 m를 넘기 전/후에 DR 허용과 차단이 바뀌는지 확인
+3. 모든 절대 pose를 끊고 2000초 또는 1000 m를 넘기 전/후에 DR 허용과 차단이 바뀌는지 확인
 4. Local Odometry가 20 m 벗어난 상태에서 단기 gate가 GPS를 거부하고, 실제 reanchor 적용·ACK 뒤 동일 GPS가 통과하는지 확인
 6. ACK 전에는 public GPS pose가 없고 잘못된 transaction/stamp/XY, timeout, late/duplicate ACK를 모두 무시하는지 확인
 7. GPS-only 기본 false와 `reference.measured=true` 플래그 요구, 이동 후보 제외, reset 이전 Global stamp 무시를 확인

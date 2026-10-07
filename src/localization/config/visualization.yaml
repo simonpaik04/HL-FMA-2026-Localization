@@ -10,7 +10,7 @@ path:
   color_rgba: [0.10, 0.80, 1.00, 1.00]
 
 markers:
-  vehicle_scale_m: [1.6, 0.8, 0.4]
+  vehicle_scale_m: [1.35, 0.85, 0.40]
   gps_scale_m: 0.35
   gps_color_rgba: [0.10, 0.90, 0.20, 0.90]
   fault_color_rgba: [1.00, 0.10, 0.10, 1.00]

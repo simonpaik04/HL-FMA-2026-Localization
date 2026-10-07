@@ -1,5 +1,8 @@
 # RDDF 위치 기반 초기화
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 차량을 실제 RDDF 중심선 위에 **설정된 차량 방향에 맞춰** 놓고 실행한다. 코스 중간에서 프로그램 전체를 다시 실행해도 고정된 `1_right` 출발 yaw를 사용하지 않고 그 위치의 차량 방향(전진은 경로 접선, 후진은 접선 반대)으로 초기화한다. 이 가정은 작업 중 사용자에게 확인했다.
 
 `rddf/yongin_route_project.json`의 `route_directions`에서 `5_T-left-in`, `5_T-right-in`, `10_parallel-left-in`을 `reverse`로 지정한다. 이 세 경로는 전체 구간에 걸쳐 차량 yaw를 경로 접선에서 180° 보정한다. 미지정 경로는 `forward`다. CSV 점 순서와 `path_yaw_rad`는 경로 진행 방향 그대로 유지한다. 편집기에서 프로젝트를 다시 내보낼 때 이 사용자 정의 설정이 보존되는지 확인한다. 이 설정은 초기 자세와 미리보기에 적용되며 기어 명령을 발행하지 않는다.
@@ -16,7 +19,7 @@
 
 GPS가 없거나 경로가 겹쳐 자동 선택이 불가능하면 공통 RViz 상단 **시작 위치 선택**을 누른다. RDDF 위에 마우스를 올리면 중심선에 맞춘 차량 윤곽과 차량 앞쪽 방향, XY/yaw가 표시된다. 클릭하면 미리 본 위치로 초기화한다. 겹치는 지점을 클릭하면 경로·구간·차량 yaw 후보 메뉴가 열린다. 후보에 마우스를 올려 차량 윤곽과 방향을 확인하고 실제 경로를 선택한다. 같은 경로의 자가 교차도 구간으로 구분한다. 진행 경로 콤보로 후보 경로를 미리 제한할 수도 있다. 메뉴에서 Esc는 후보 선택만 취소하고, 지도에서 Esc 또는 선택 취소는 GPS 대기로 돌아간다. 초기화 완료 후에는 클릭으로 주행 중 위치를 바꾸지 않는다.
 
-수동 선택은 실제 좌표를 측량한 GPS fix가 아니므로 `MANUAL_RDDF`로 기록한다. 초기 anchor는 한 번만 등록하고 GPS healthy를 만들지 않는다. **GPS 없이 시작할 때도 기존 DEAD_RECKONING 제한 2초 또는 10m 중 먼저 초과하는 기준이 유지된다.** READY는 초기화 적용 완료이며 지속적인 localization valid를 보장하지 않는다. 계속 GPS 없이 주행하도록 안전 정책을 완화한 기능은 아니다.
+수동 선택은 실제 좌표를 측량한 GPS fix가 아니므로 `MANUAL_RDDF`로 기록한다. 초기 anchor는 한 번만 등록하고 GPS healthy를 만들지 않는다. `enable_gps_fusion:=false`로 시작한 세션은 GPS가 의도적으로 없는 운용 모드이므로, 이 anchor와 fresh IMU·엔코더 및 정상 Local/Global EKF가 유지되는 동안 `DEAD_RECKONING`, `valid=true`를 출력한다. GPS를 활성화한 세션에서 신호만 끊긴 경우에는 기존 2000초 또는 1000m 제한이 그대로 적용된다. GPS 없는 모드는 절대 위치 보정이 없어 이동할수록 위치·방향 오차가 누적된다.
 
 ## 좌표 기준
 
@@ -29,10 +32,12 @@ GPS가 없거나 경로가 겹쳐 자동 선택이 불가능하면 공통 RViz �
 
 ## 실패와 경계
 
-- GPS 부재·불량: 자동 피팅하지 않고 대기. 현재 위치는 수동 선택 가능.
+- GPS 미사용 모드: `enable_gps_fusion:=false`에서 현재 위치를 수동 선택한 뒤 IMU·엔코더로 계속 추정한다.
+- GPS 활성 상태의 부재·불량: 자동 피팅하지 않고 대기하며, 초기화 후 단절에는 bounded dead reckoning 제한을 적용한다.
 - 스냅 거리 초과·서로 다른 경로가 비슷하게 가까움: 임의 경로 선택 거부.
 - fresh 정지 속도 없음: WAITING_FOR_STATIONARY. IMU/TF 준비 대기: WAITING_FOR_IMU.
-- 서비스 미준비·실패, 확인 중 이동, EKF 위치/yaw 확인 timeout: FAULT, 최종 출력 차단. 전체 localization 재실행 후 다시 선택한다.
+- 서비스 미준비·fresh IMU 대기·EKF 위치/yaw 확인 지연: 준비와 확인을 계속 기다린다. 3초 초과는 지연 안내만 표시하며 FAULT로 고정하지 않는다. 초기화 완료 전 ready는 false다.
+- 서비스 호출 실패 또는 확인 중 이동: FAULT, 최종 출력 차단. 전체 localization 재실행 후 다시 선택한다.
 - ready heartbeat 중단: Manager와 Output Gate에서 독립 차단. 같은 pose/heartbeat를 반복해 DR 시간을 늘리지 않는다.
 - ROS 시각 역행: 초기화 epoch를 바꾸고 새 위치 선택부터 다시 진행한다.
 - 차량 제동은 Controller 책임이다. 이 패키지는 Ctrl_cmd를 발행하지 않는다.
@@ -66,9 +71,7 @@ rostest mando_localization rddf_initialization_manual.test
 
 합성 입력·GUI 시험과 실제 차량 재시작 시험은 구분한다. 실제 GPS/PPS 동기화·IMU 절대방향·차량 배치 정확도는 별도 실차 확인이 필요하다.
 
-## 원본 프로젝트의 과거 검증 참고
-
-아래는 원본 작업공간에서 기록된 결과이며 이번 독립 저장소의 검증 결과가 아닙니다. 원본 bag·로그와 GUI 검증 산출물은 이 저장소에 포함하지 않습니다. 현재 결과는 [검증 기록](../../../docs/VALIDATION.md)을 참고합니다.
+## 원본 프로젝트의 과거 실행 기록
 
 - Catkin 빌드 성공. 최종 Catkin 결과 269 tests, 0 errors, 0 failures.
 - 실제 ROS 노드 기반 GPS/수동 초기화와 최종 출력 검증 통과(합성 입력).

@@ -22,7 +22,7 @@ initialization:
   max_speed_mps: 0.30
   speed_timeout_sec: 0.20
   clock_timeout_sec: 3.0
-  confirmation_timeout_sec: 3.0
+  confirmation_timeout_sec: 3.0  # 지연 안내 기준. 초과해도 확인을 계속 기다린다.
   confirmation_distance_m: 1.0
   confirmation_yaw_deg: 5.0
   confirmation_samples: 3

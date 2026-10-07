@@ -1,0 +1,2 @@
+route_id,route_name,closed,index,latitude,longitude,east_m,north_m,distance_m,path_yaw_rad
+route-1789491310710,2_신호등1,false,0,37.5514857591,126.9249141053,-15.065782,37.309624,0.000000,

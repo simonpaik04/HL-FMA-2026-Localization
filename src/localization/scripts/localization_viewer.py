@@ -3,7 +3,6 @@
 
 Recorded outputs use a display-only common XY translation. Live RDDF-map mode
 also offers an explicit startup-pose request; hovering never changes estimation.
-Odometry mode displays poses without a GPS anchor or an RDDF overlay.
 Time navigation redraws buffered results and never rewinds ROS /clock.
 """
 import argparse
@@ -37,6 +36,7 @@ FRAME = 'localization_debug'
 PREFIX = '/mando_localization/visualization/debug'
 DEFAULT_CONFIG = yaml.safe_load((PACKAGE/'config/localization_viewer.yaml').read_text())
 TOPICS = dict(DEFAULT_CONFIG['topics'])
+TOPICS['rddf'] = '/molit/localization/rddf/current'
 COLORS = {key:tuple(value) for key,value in DEFAULT_CONFIG['colors'].items()}
 INITIALIZATION_PREFIX = '/mando_localization/internal/initialization'
 
@@ -78,6 +78,16 @@ def manual_initialization_request(match, stamp):
             raise ValueError('non-finite manual pose')
         result[key] = value
     return result
+
+
+def manual_candidate_menu_required(match):
+    """Require an explicit source-route choice when one click fits multiple RDDFs."""
+    if not match:
+        return False
+    if match.get('reason') == 'AMBIGUOUS_ROUTE':
+        return True
+    routes = {candidate['route'] for candidate in match.get('candidates', ())}
+    return match.get('accepted', False) and len(routes) > 1
 
 
 def scene_marker_updates(markers, known_keys):
@@ -195,6 +205,13 @@ def final_bag(path):
 
 
 def decode_sample(key, message, project):
+    if key == 'rddf':
+        return dict(accepted=bool(message.matched), reason=message.reason,
+                    route=message.source_route_name,
+                    active_sources=list(getattr(message, 'active_source_route_names',
+                                                [message.source_route_name] if message.matched else [])),
+                    distance=message.nearest.distance_m,
+                    stamp=message.header.stamp.to_sec())
     if key in ('local', 'global'):
         p = message.pose.pose.position
         value = (p.x, p.y, yaw_of(message.pose.pose.orientation))
@@ -251,16 +268,14 @@ class SceneData:
                  limit=200000, frame_mode='first_gps_translation'):
         self.routes, self.project = load_rddf(Path(rddf_dir))
         self.rddf_dir = Path(rddf_dir)
-        if frame_mode not in ('first_gps_translation', 'rddf_map', 'odometry'):
+        if frame_mode not in ('first_gps_translation', 'rddf_map'):
             raise ValueError('unknown viewer frame_mode: ' + str(frame_mode))
         self.frame_mode = frame_mode
-        if frame_mode == 'odometry':
-            self.routes = {}  # Unanchored odometry does not locate the vehicle on RDDF.
         self.start, self.duration, self.limit = source_start, duration, limit
         self.data = {key: [] for key in TOPICS}
         self.times = {key: [] for key in TOPICS}
         self.mount = None
-        self.shift = None if frame_mode == 'first_gps_translation' else np.zeros(2)
+        self.shift = np.zeros(2) if frame_mode == 'rddf_map' else None
         self.first_local = self.first_gps = None
         self.summary = {'processed_bag': str(processed_bag) if processed_bag else None,
                         'common_xy_translation_m': self.shift.tolist() if self.shift is not None else None,
@@ -272,7 +287,7 @@ class SceneData:
         for key in TOPICS:
             self.data[key].clear(); self.times[key].clear()
         self.first_local = self.first_gps = None
-        self.shift = None if self.frame_mode == 'first_gps_translation' else np.zeros(2)
+        self.shift = np.zeros(2) if self.frame_mode == 'rddf_map' else None
         self.start, self.duration = stamp, 0.
         self.summary['common_xy_translation_m'] = self.shift.tolist() if self.shift is not None else None
         self.summary['clock_resets'] += 1
@@ -323,16 +338,6 @@ class SceneData:
             if self.shift is None: return np.empty((0,width))
             values[:,:2] += self.shift
         return values
-
-    def view_bounds(self):
-        """Fit only observed odometry in the unanchored mode, including a fresh origin."""
-        keys = ('local', 'global') if self.frame_mode == 'odometry' else ('local', 'global', 'gps')
-        arrays = list(self.routes.values()) + [self.points(key)[:, :2] for key in keys]
-        arrays = [points for points in arrays if len(points)]
-        points = np.vstack(arrays) if arrays else np.zeros((1, 2))
-        lower, upper = points.min(axis=0), points.max(axis=0)
-        minimum_span = 20. if self.frame_mode == 'odometry' else 1.
-        return (lower+upper)/2, np.maximum(upper-lower, minimum_span)
 
 
 def load_data(processed_bag, source_bag, rddf_dir, limit, frame_mode='first_gps_translation'):
@@ -397,15 +402,14 @@ def run_gui(model, seek, live=False, config=None):
             self.scene_keys = set()
             self.selection_message = ''
             from rddf_initialization_core import RddfRouteMap
-            self.route_map = None if model.frame_mode == 'odometry' else RddfRouteMap(model.rddf_dir)
+            self.route_map = RddfRouteMap(model.rddf_dir)
             self.current_rddf_max_distance = float(config.get('current_rddf_max_distance_m', 5.0))
             self.current_rddf_ambiguity_distance = float(config.get('current_rddf_ambiguity_distance_m', 0.5))
             if (not math.isfinite(self.current_rddf_max_distance) or self.current_rddf_max_distance <= 0
                     or not math.isfinite(self.current_rddf_ambiguity_distance)
                     or self.current_rddf_ambiguity_distance < 0):
                 raise ValueError('invalid current RDDF display distances')
-            self.manual_enabled = (live and model.frame_mode == 'rddf_map'
-                                   and config.get('manual_initialization_enabled', True))
+            self.manual_enabled = live and model.frame_mode == 'rddf_map'
             self.manual_snap_distance = float(config.get('manual_snap_distance_m', 5.0))
             self.imu_raw_stale_sec = float(config.get('imu_raw_stale_sec', 0.5))
             if not math.isfinite(self.manual_snap_distance) or self.manual_snap_distance <= 0:
@@ -439,9 +443,7 @@ def run_gui(model, seek, live=False, config=None):
             heading = QtWidgets.QLabel('RDDF 공통 뷰어  |  초록 Local · 빨강 Global · 보라 Raw GPS · 파랑 RDDF')
             heading.setStyleSheet('font-size:16px;font-weight:bold;padding:6px')
             layout.addWidget(heading)
-            self.current_rddf_label = QtWidgets.QLabel(
-                'IMU·엔코더 Odometry · GPS/RDDF 위치 정합 없음'
-                if model.frame_mode == 'odometry' else 'RDDF: waiting for Global position')
+            self.current_rddf_label = QtWidgets.QLabel('RDDF: waiting for Global position')
             self.current_rddf_label.setObjectName('current_rddf_label')
             self.current_rddf_label.setWordWrap(True)
             self.current_rddf_label.setStyleSheet('font-size:16px;font-weight:bold;padding:6px')
@@ -586,14 +588,10 @@ def run_gui(model, seek, live=False, config=None):
             button('이동', self.jump_time)
             self.clock_label = QtWidgets.QLabel()
             controls.addWidget(self.clock_label)
-            frame_note = {
-                'rddf_map': 'RDDF map 좌표 그대로 표시',
-                'odometry': '노드 Odometry 위치·yaw 그대로 표시 · 지도 위치 정합 없음',
-                'first_gps_translation': 'Local/Global 동일 XY 이동 · yaw 회전 없음',
-            }[model.frame_mode]
+            frame_note = ('RDDF map 좌표 그대로 표시' if model.frame_mode == 'rddf_map'
+                          else 'Local/Global 동일 XY 이동 · yaw 회전 없음')
             note = QtWidgets.QLabel('Space 재생/정지 · ←/→ 10초 · '+frame_note+
-                                   ' · 시간 탐색은 화면만 이동'+
-                                   (' · RDDF는 설계 경로' if model.frame_mode != 'odometry' else ''))
+                                   ' · 시간 탐색은 화면만 이동 · RDDF는 설계 경로')
             note.setStyleSheet('color:#777;padding:4px')
             note.setWordWrap(True)
             layout.addWidget(note)
@@ -622,7 +620,7 @@ def run_gui(model, seek, live=False, config=None):
             if status == self.initialization:
                 return
             self.initialization = status
-            locked = status['state'] in ('READY', 'INITIALIZING', 'FAULT')
+            locked = status['state'] in ('INITIALIZING', 'FAULT')
             self.select_button.setEnabled(not locked)
             self.route_choice.setEnabled(not locked and self.selection_active)
             if locked and self.selection_active:
@@ -631,7 +629,7 @@ def run_gui(model, seek, live=False, config=None):
             # here as well can queue stale scenes ahead of current odometry.
 
         def set_selection_active(self, active):
-            if active and self.initialization.get('state') in ('READY', 'INITIALIZING', 'FAULT'):
+            if active and self.initialization.get('state') in ('INITIALIZING', 'FAULT'):
                 self.select_button.setChecked(False)
                 return
             self.selection_active = bool(active)
@@ -673,10 +671,10 @@ def run_gui(model, seek, live=False, config=None):
                 x, y = topdown_screen_to_map(point.x(), point.y(), self.render_panel.width(),
                     self.render_panel.height(), *props, pixel_ratio=self.render_panel.devicePixelRatioF())
                 self.preview = self.route_map.match(x, y, self.manual_snap_distance, route_name=route)
-                if self.preview.get('accepted'):
-                    self.selection_message = ''
-                elif self.preview.get('reason') == 'AMBIGUOUS_ROUTE':
+                if manual_candidate_menu_required(self.preview):
                     self.selection_message = '경로가 겹칩니다. 클릭해서 경로와 차량 방향을 고르세요'
+                elif self.preview.get('accepted'):
+                    self.selection_message = ''
                 else:
                     self.selection_message = '선택한 RDDF 선 가까이 마우스를 이동하세요: '+self.preview.get('reason', '')
             except (ValueError, TypeError, RuntimeError) as error:
@@ -694,7 +692,7 @@ def run_gui(model, seek, live=False, config=None):
                               QtCore.QEvent.MouseButtonRelease, QtCore.QEvent.MouseButtonDblClick):
                     self.update_preview(event.pos())
                     if kind == QtCore.QEvent.MouseButtonPress and event.button() == QtCore.Qt.LeftButton:
-                        if self.preview and self.preview.get('reason') == 'AMBIGUOUS_ROUTE':
+                        if manual_candidate_menu_required(self.preview):
                             self.choose_overlap(event.globalPos())
                         else:
                             self.submit_manual_pose()
@@ -739,7 +737,7 @@ def run_gui(model, seek, live=False, config=None):
 
         def submit_manual_pose(self):
             if (not self.selection_active or self.initialization.get('state') in
-                    ('READY', 'INITIALIZING', 'FAULT')):
+                    ('INITIALIZING', 'FAULT')):
                 return
             if not self.preview or not self.preview.get('accepted'):
                 self.selection_message = 'RDDF 선 가까이를 클릭하세요. 겹친 지점은 클릭 후 후보를 고르세요'
@@ -756,7 +754,9 @@ def run_gui(model, seek, live=False, config=None):
             self.selection_message = '선택 위치 전송 완료 · 정지/IMU 확인 및 초기화 결과 대기'
 
         def fit_view(self):
-            center, span = self.model.view_bounds()
+            points = np.vstack(list(self.routes.values()) + [self.model.points(key)[:, :2] for key in ('local', 'global', 'gps')])
+            lower, upper = points.min(axis=0), points.max(axis=0)
+            center, span = (lower+upper)/2, np.maximum(upper-lower, 1)
             self.view.subProp('X').setValue(float(center[0]))
             self.view.subProp('Y').setValue(float(center[1]))
             scale = .8*self.render_panel.devicePixelRatioF()*min(
@@ -770,6 +770,7 @@ def run_gui(model, seek, live=False, config=None):
                 self.input_dropped += 1
 
         def subscribe_live(self):
+            from mando_localization.msg import RddfMatch
             from nav_msgs.msg import Odometry
             from sensor_msgs.msg import Imu, NavSatFix, LaserScan
             from diagnostic_msgs.msg import DiagnosticArray
@@ -778,7 +779,7 @@ def run_gui(model, seek, live=False, config=None):
             types = dict(local=Odometry, **{'global':Odometry}, gps=NavSatFix, scan=LaserScan,
                          speed=SerialFeedBack, state=String, valid=Bool, imu_raw=Imu,
                          imu_normalized=Imu, imu_calibrated=Imu, calibration=DiagnosticArray,
-                         diagnostics=DiagnosticArray)
+                         diagnostics=DiagnosticArray, rddf=RddfMatch)
             subs = [rospy.Subscriber(topic,types[key],lambda msg,k=key:self.enqueue(k,msg),queue_size=100)
                     for key,topic in TOPICS.items()]
             subs.append(rospy.Subscriber('/tf_static',TFMessage,lambda msg:self.enqueue('tf',msg),queue_size=20))
@@ -959,12 +960,8 @@ def run_gui(model, seek, live=False, config=None):
             valid_index = bisect.bisect_right(self.times['valid'], self.position)-1
             match_valid = (valid_index >= 0 and bool(self.data['valid'][valid_index])
                            and display_now-self.times['valid'][valid_index] <= 1.0)
-            if self.model.frame_mode == 'odometry':
-                rddf_match = dict(accepted=False, reason='RDDF_DISABLED', routes=[],
-                                  text='IMU·엔코더 Odometry · GPS/RDDF 위치 정합 없음')
-            else:
-                rddf_match = current_rddf_match(self.route_map, global_position, match_valid,
-                    self.current_rddf_max_distance, self.current_rddf_ambiguity_distance)
+            rddf_match = current_rddf_match(self.route_map, global_position, match_valid,
+                self.current_rddf_max_distance, self.current_rddf_ambiguity_distance)
             route_color = (1., .8, .15) if rddf_match['accepted'] else (1., .5, .15)
             if rddf_match['accepted']:
                 names = [rddf_match['route']]
@@ -972,15 +969,34 @@ def run_gui(model, seek, live=False, config=None):
                 names = rddf_match['routes']
             else:
                 names = []
-            for name in current_rddf_members(self.route_map, names) if self.route_map is not None else []:
+            members = current_rddf_members(self.route_map, names)
+            # Tracker owns current + next activation; use the recorded sample
+            # at the displayed time, including live mode. No independent match
+            # may replace the tracker's branch selection in live operation.
+            tracked_index = bisect.bisect_right(self.times['rddf'], self.position)-1
+            if tracked_index >= 0 or live:
+                tracked = self.data['rddf'][tracked_index] if tracked_index >= 0 else None
+                fresh = (tracked is not None and
+                         0 <= display_now - self.times['rddf'][tracked_index] <= .5 and
+                         self.model.start is not None and
+                         0 <= self.model.start + display_now - tracked['stamp'] <= .5)
+                accepted = bool(fresh and tracked['accepted'])
+                members = ([name for name in tracked['active_sources'] if name in self.routes]
+                           if accepted else [])
+                rddf_match = dict(tracked or {}, accepted=accepted,
+                                  text=('RDDF: {} | active {} | {:.2f} m'.format(
+                                      tracked['route'], ' + '.join(members), tracked['distance'])
+                                        if accepted else 'RDDF: tracker waiting / invalid / stale'))
+                route_color = (1., .8, .15) if accepted else (1., .5, .15)
+            for name in members:
                 markers.append(self.marker(0, Marker.LINE_STRIP, route_color,
                     self.routes[name], .35, 'current_rddf/'+name))
                 markers[-1].pose.position.z = .08
             route_text = rddf_match['text']
-            if self.model.frame_mode == 'first_gps_translation':
+            if self.model.frame_mode != 'rddf_map':
                 route_text += ' (display coordinates)'
             self.current_rddf_label.setText(route_text)
-            if global_position is not None and self.model.frame_mode != 'odometry':
+            if global_position is not None:
                 label = self.marker(0, Marker.TEXT_VIEW_FACING, route_color, [], 1.2, 'current_rddf_label')
                 label.pose.position.x = float(global_position[0])
                 label.pose.position.y = float(global_position[1])+2.5

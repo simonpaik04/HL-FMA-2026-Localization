@@ -1,5 +1,8 @@
 # CalibratedIMU
 
+현재 운영값·GPS 비활성 모드·반복 방향 보정·RDDF 연속 추적은 [최종 설정](final_configuration.md)을 기준으로 확인합니다. 아래 과거 실험 기록은 이번 snapshot의 검증 결과와 구분합니다.
+
+
 `CalibratedIMU`는 `sensor_msgs/Imu`를 사용하는 위치 추정 공통 입력이다.
 원본 → ImuNormalizer → CalibratedIMU → InterfaceAdapter → Local/Global EKF 순서다.
 StatusManager도 보정 출구를 읽는다. 원본 relay, normalizer와 센서 시각 진단만 원본을 읽는다.
@@ -98,7 +101,7 @@ NAV-PVT는 Header가 없으므로 UTC와 `valid`/`flags2`를 검사한다. 북�
 반대 방향이나 큰 불일치는 `REPEAT_HEADING_DIFFERENCE_TOO_LARGE`로 보류하고,
 직전 보정각 적용 중에는 `WAITING_FOR_PREVIOUS_ALIGNMENT`로 새 후보를 모으지 않는다.
 이는 기존 정렬과의 일관성 검사이며, 검증되지 않은 encoder 부호를 전·후진 증거로 사용하지 않는다.
-이미 잘못된 초기 정렬을 이 검사만으로 판별할 수는 없다. `one_shot: true`로 되돌리면 최초 정렬만 수행한다.
+이미 잘못된 초기 정렬을 이 검사만으로 판별할 수는 없다. `one_shot: true`로 변경하면 최초 GNSS 정렬만 수행한다.
 
 저속 course는 위치 잡음과 수신기 저속/정지 처리의 영향을 받으므로 정지한 GPS로 yaw를 구하지 않는다.
 [u-blox 공식 Course Over Ground 설명](https://content.u-blox.com/sites/default/files/products/documents/u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221.pdf)

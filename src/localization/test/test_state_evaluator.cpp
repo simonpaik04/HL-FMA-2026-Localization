@@ -55,6 +55,34 @@ TEST(LocalizationStateEvaluatorTest, DegradesWithOneRemainingAbsoluteSource) {
   EXPECT_TRUE(decision.valid);
 }
 
+TEST(LocalizationStateEvaluatorTest, AllowsAnchoredImuEncoderOperationWithoutGps) {
+  StateInput input;
+  input.uptime_sec = 120.0;
+  input.local_motion_healthy = true;
+  input.global_output_healthy = true;
+  input.anchor_seen = true;
+  input.absolute_enabled_count = 0U;
+  input.absolute_healthy_count = 0U;
+  input.seconds_since_absolute = 120.0;
+  input.dead_reckoning_distance_m = 100.0;
+  const StateDecision decision = evaluator().evaluate(input);
+  EXPECT_EQ(LocalizationState::DEAD_RECKONING, decision.state);
+  EXPECT_EQ("manual_anchor_inertial_odometry", decision.reason);
+  EXPECT_TRUE(decision.valid);
+}
+
+TEST(LocalizationStateEvaluatorTest, GpsDisabledStillRequiresCommittedAnchor) {
+  StateInput input;
+  input.uptime_sec = 4.0;
+  input.local_motion_healthy = true;
+  input.global_output_healthy = true;
+  input.absolute_enabled_count = 0U;
+  const StateDecision decision = evaluator().evaluate(input);
+  EXPECT_EQ(LocalizationState::INITIALIZING, decision.state);
+  EXPECT_EQ("waiting_for_absolute_anchor", decision.reason);
+  EXPECT_FALSE(decision.valid);
+}
+
 TEST(LocalizationStateEvaluatorTest, AllowsBoundedDeadReckoning) {
   StateInput input;
   input.uptime_sec = 4.0;
