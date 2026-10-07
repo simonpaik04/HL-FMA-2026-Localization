@@ -1,6 +1,8 @@
 # HL-FMA 2026 · Vehicle Localization
 
-**IMU·엔코더·GPS를 융합해 차량 위치를 추정하고, 현재 RDDF 경로와 위치 사용 가능 상태를 함께 제공하는 ROS1 시스템입니다.**
+- **구현 방식:** ROS1에서 `robot_localization`의 Local·Global EKF를 구성해 IMU·엔코더 기반 운동 추정과 GPS 절대 위치 보정을 결합했습니다.
+- **수행 기능:** 센서 전처리, GPS 품질·시간 정합 검증과 복구, RDDF 기반 초기화·연속 경로 추적, 최종 위치·상태 출력을 구현했습니다.
+- **설계 특징:** 연속 운동 추정과 GPS 보정 승인을 분리하고, 출력 유효성 검사와 경로 연속성 관리로 주행 모듈에 위치 사용 가능 상태를 제공합니다.
 
 ![실제 rosbag 재생 중 Localization 뷰어](assets/localization-rosbag-replay.png)
 
